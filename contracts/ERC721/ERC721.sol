@@ -55,7 +55,7 @@ abstract contract ERC721 is Constants {
     /// @dev instead of writing a function, we can use a public variable and solidity
     /// will handle the getter.
     /// @notice function balanceOf(address _owner) external view returns (uint256)
-    mapping(address => uint256) public balanceOf;
+    uint256[] private tokenIDs;
 
     /// @notice function ownerOf(uint256 _tokenId) external view returns (address)
     /// @dev instead of writing a function, we can use a public variable and solidity
@@ -91,6 +91,18 @@ abstract contract ERC721 is Constants {
      * ERC721 Implementation
      *
      */
+    function balanceOf(address _owner) external view returns (uint256 balance) {
+        require(_owner != address(0), "bad address");
+
+        for (uint256 i = 0; i < tokenIDs.length; i++) {
+            if (ownerOf[tokenIDs[i]] == _owner) {
+                balance++;
+            }
+        }
+
+        return balance;
+    }
+
     /// @notice Transfers the ownership of an NFT from one address to another address
     /// @dev Throws unless `msg.sender` is the current owner, an authorized
     ///  operator, or the approved address for this NFT. Throws if `_from` is
@@ -216,10 +228,7 @@ abstract contract ERC721 is Constants {
         require(_to != address(0), ERR_BAD_ADDRESS);
         require(ownerOf[_tokenId] == address(0), ERR_TOKEN_EXISTS);
 
-        // let's be serious
-        unchecked {
-            balanceOf[_to]++;
-        }
+        tokenIDs.push(_tokenId);
 
         ownerOf[_tokenId] = _to;
 
@@ -248,16 +257,19 @@ abstract contract ERC721 is Constants {
 
         require(owner != address(0), ERR_TOKEN_NOT_EXISTS);
 
-        // let's be serious
-        unchecked {
-            balanceOf[owner]--;
-        }
-
         // remove all approvals
         getApproved[_tokenId] = address(0);
 
         // remove token ownership
         delete ownerOf[_tokenId];
+
+        // remove token from list
+        for (uint256 i = 0; i < tokenIDs.length; i++) {
+            if (tokenIDs[i] == _tokenId) {
+                delete tokenIDs[i];
+                break;
+            }
+        }
 
         emit Transfer(owner, address(0), _tokenId);
     }
@@ -279,15 +291,6 @@ abstract contract ERC721 is Constants {
     ) internal virtual {
         _checkTransferInput(_to, _tokenId);
         _authorize(_tokenId, msg.sender, _from);
-
-        unchecked {
-            // it is imposible to overflow since _from is guarenteed to be the owner
-            // of transfering token
-            balanceOf[_from]--;
-
-            // it is possible to overflow, but come on.
-            balanceOf[_to]++;
-        }
 
         // set owner of token to _to
         ownerOf[_tokenId] = _to;
