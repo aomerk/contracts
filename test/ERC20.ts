@@ -8,6 +8,7 @@ async function contracts() {
 
 	return erc20;
 }
+const MaxUint256 = (/*#__PURE__*/ethers.BigNumber.from("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
 describe.only("ERC20", function () {
 	it("deploy", async function () {
 		await contracts()
@@ -16,6 +17,8 @@ describe.only("ERC20", function () {
 		const erc20 = await contracts();
 		const [owner, user] = await ethers.getSigners();
 		await erc20.mint(owner.address, 120)
+
+		expect(await erc20.totalSupply()).to.equal(120);
 
 		const balance = await erc20.balanceOf(owner.address)
 		expect(balance.toNumber()).to.equal(120)
@@ -42,6 +45,24 @@ describe.only("ERC20", function () {
 		expect(balance.toNumber()).to.equal(120)
 
 		await erc20.transfer(user.address, 10);
+
+		balance = await erc20.balanceOf(owner.address)
+		let userBalance = await erc20.balanceOf(user.address)
+
+		expect(balance.toNumber()).to.equal(110);
+		expect(userBalance.toNumber()).to.equal(10);
+	});
+	it("approve", async function () {
+		const erc20 = await contracts();
+		const [owner, user] = await ethers.getSigners();
+		await erc20.mint(owner.address, 120)
+
+		await erc20.approve(user.address, 10);
+		let balance = await erc20.balanceOf(owner.address)
+
+		expect(balance.toNumber()).to.equal(120)
+
+		await erc20.connect(user).transferFrom(owner.address, user.address, 10);
 
 		balance = await erc20.balanceOf(owner.address)
 		let userBalance = await erc20.balanceOf(user.address)
