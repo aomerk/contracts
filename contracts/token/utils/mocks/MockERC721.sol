@@ -6,7 +6,7 @@ pragma solidity ^0.8.3;
 import "../../ERC721/ERC721.sol";
 
 //
-contract ExampleERC721 is ERC721 {
+contract MockERC721 is ERC721 {
     string contractName;
 
     constructor(string memory _contractName)
