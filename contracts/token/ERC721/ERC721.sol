@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.3;
 
-import "../utils/common/ERC165/ERC165.sol";
+import "../../utils/common/ERC165/ERC165.sol";
 import "./IERC721TokenReceiver.sol";
 
 contract Constants {

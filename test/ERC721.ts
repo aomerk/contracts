@@ -11,7 +11,6 @@ async function contracts() {
 describe("ERC721", function () {
 	it("deploy", async function () {
 		contracts()
-
 	});
 	it("balanceOf", async function () {
 		const erc721 = await contracts()
