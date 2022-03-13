@@ -28,13 +28,13 @@ describe("Sorted Array", function () {
 		const sortedArray = await contracts(bigArr)
 
 		const [owner, userAddress1, userAddress2] = await ethers.getSigners();
+
 		await sortedArray.removeValues(3, 0);
+		const res = await sortedArray.getLength();
 
 		let data = await sortedArray.getAll()
-		for (let i = 0; i < data.length; i++) {
-			console.log("data[" + i + "] = " + data[i]);
-		}
 
+		expect(res).to.be.equal(arr.length - 3);
 	});
 
 	it("find smallest bigger item", async function () {
@@ -47,6 +47,18 @@ describe("Sorted Array", function () {
 		}
 
 		let idx = await sortedArray.findSmallestBiggerIndex(4);
+		let value = await sortedArray.get(idx);
+	});
+	it("find biggest smaller item", async function () {
+		const sortedArray = await contracts([])
+
+		const [owner, userAddress1, userAddress2] = await ethers.getSigners();
+
+		for (let i = 1; i <= 10; i += 2) {
+			await sortedArray.insert(i);
+		}
+
+		let idx = await sortedArray.findBiggestSmallerIndex(4);
 		let value = await sortedArray.get(idx);
 	});
 	it("get", async function () {
