@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.3;
 
-import "../../utils/common/ERC165/ERC165.sol";
-import "./IERC721TokenReceiver.sol";
+import "../../../utils/common/ERC165/ERC165.sol";
+import "../IERC721TokenReceiver.sol";
 
 contract Constants {
     string public constant ERR_BAD_ADDRESS = "BAD_ADDRESS";
@@ -14,11 +14,10 @@ contract Constants {
 /// @title ERC-721 Non-Fungible Token Standard implementation.
 /// @dev See https://eips.ethereum.org/EIPS/eip-721
 ///  Note: the ERC-165 identifier for this interface is 0x80ac58cd.
-abstract contract ERC721 is Constants {
+abstract contract ERC721Naive is Constants {
     /*
      * Events
      */
-
     /// @dev This emits when ownership of any NFT changes by any mechanism.
     ///  This event emits when NFTs are created (`from` == 0) and destroyed
     ///  (`to` == 0). Exception: during contract creation, any number of NFTs
@@ -56,7 +55,7 @@ abstract contract ERC721 is Constants {
     /// @dev instead of writing a function, we can use a public variable and solidity
     /// will handle the getter.
     /// @notice function balanceOf(address _owner) external view returns (uint256)
-    uint256[] internal tokenIDs;
+    uint256[] private tokenIDs;
 
     /// @notice function ownerOf(uint256 _tokenId) external view returns (address)
     /// @dev instead of writing a function, we can use a public variable and solidity
@@ -71,17 +70,6 @@ abstract contract ERC721 is Constants {
     /// @notice function isApprovedForAll(address _owner, address _operator) external view returns (bool);
     ///
     mapping(address => mapping(address => bool)) public isApprovedForAll;
-
-    string public name;
-
-    string public symbol;
-
-    constructor(string memory _name, string memory _symbol) {
-        name = _name;
-        symbol = _symbol;
-    }
-
-    function tokenURI(uint256 id) public view virtual returns (string memory);
 
     /*
      *
@@ -274,6 +262,14 @@ abstract contract ERC721 is Constants {
 
         // remove token ownership
         delete ownerOf[_tokenId];
+
+        // remove token from list
+        for (uint256 i = 0; i < tokenIDs.length; i++) {
+            if (tokenIDs[i] == _tokenId) {
+                delete tokenIDs[i];
+                break;
+            }
+        }
 
         emit Transfer(owner, address(0), _tokenId);
     }
