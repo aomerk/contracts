@@ -53,9 +53,6 @@ abstract contract ERC721 is Constants {
      *	Variable declarations
      *
      */
-    /// @dev instead of writing a function, we can use a public variable and solidity
-    /// will handle the getter.
-    /// @notice function balanceOf(address _owner) external view returns (uint256)
     uint256[] internal tokenIDs;
 
     /// @notice function ownerOf(uint256 _tokenId) external view returns (address)

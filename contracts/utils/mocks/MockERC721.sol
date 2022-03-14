@@ -3,10 +3,10 @@ pragma solidity ^0.8.3;
 
 // import "@rari-capital/solmate/src/tokens/ERC721.sol";
 
-import "../../token/ERC721/ERC721.sol";
+import "../../token/ERC721/ERC721Enumerable.sol";
 
 //
-contract MockERC721 is ERC721 {
+contract MockERC721 is ERC721Enumerable {
     string contractName;
 
     constructor(string memory _contractName)
