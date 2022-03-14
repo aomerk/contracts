@@ -10,7 +10,7 @@ contract MockERC721 is ERC721 {
     string contractName;
 
     constructor(string memory _contractName)
-    //  ERC721("Eat The Blocks NFTs", "ETBNFT")
+        ERC721("Eat The Blocks NFTs", "ETBNFT")
     {
         contractName = _contractName;
     }
@@ -18,15 +18,15 @@ contract MockERC721 is ERC721 {
     // /**
     //  * @dev See {IERC721Metadata-tokenURI}.
     //  */
-    // function tokenURI(uint256 tokenId)
-    //     public
-    //     view
-    //     virtual
-    //     override
-    //     returns (string memory)
-    // {
-    //     return contractName;
-    // }
+    function tokenURI(uint256 tokenId)
+        public
+        view
+        virtual
+        override
+        returns (string memory)
+    {
+        return contractName;
+    }
 
     function mint(address to, uint256 tokenId) public virtual {
         _mint(to, tokenId);
