@@ -8,7 +8,7 @@ async function contracts() {
 
 	return erc721;
 }
-describe("ERC721", function () {
+describe.only("ERC721", function () {
 	it("deploy", async function () {
 		contracts()
 	});
@@ -53,7 +53,9 @@ describe("ERC721", function () {
 
 		await erc721.mint(owner.address, 1);
 		await erc721.burn(1);
+		expect(await erc721.burn(1)).to.be.reverted("ERR_TOKEN_NOT_EXISTS");
 
+		expect(await erc721.balanceOf(owner.address)).to.eq(0);
 	});
 	it("mint", async function () {
 		const erc721 = await contracts()
