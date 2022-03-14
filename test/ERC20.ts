@@ -70,4 +70,22 @@ describe.only("ERC20", function () {
 		expect(balance.toNumber()).to.equal(110);
 		expect(userBalance.toNumber()).to.equal(10);
 	});
+	// it("permit", async function () {
+	// 	const erc20 = await contracts();
+
+	// 	const [owner, user] = await ethers.getSigners();
+
+	// 	let deadline = (await ethers.provider.getBlock('latest')).timestamp;
+	// 	deadline += 2;
+
+
+	// 	const value = '1000000000000000000';
+	// 	let spender = user.address;
+
+	// 	const result = await signERC2612Permit(provider, erc20.address, defaultSender, spender, value);
+
+	// 	await erc20.connect(owner).permit(defaultSender, spender, value, result.deadline, result.v, result.r, result.s);
+	// });
 });
+
+
