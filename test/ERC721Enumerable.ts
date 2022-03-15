@@ -8,7 +8,7 @@ async function contracts() {
 
 	return erc721;
 }
-describe.only("ERC721", function () {
+describe("ERC721", function () {
 	it("deploy", async function () {
 		contracts()
 	});
