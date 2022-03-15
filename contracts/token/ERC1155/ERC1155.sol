@@ -182,4 +182,62 @@ contract ERC1155 {
         uint256[] memory ids,
         uint256[] memory amounts
     ) internal virtual {}
+
+    function _batchSafetyCheck(
+        address _from,
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _values,
+        bytes memory _data
+    ) internal {
+        // The recipient is not a contract
+        if (_to.code.length == 0) {
+            return;
+        }
+
+        // The transaction is not a mint/transfer of a token.
+        if (_to == address(0)) {
+            return;
+        }
+
+        require(
+            ERC1155TokenReceiver(_to).onERC1155BatchReceived(
+                msg.sender,
+                _from,
+                _ids,
+                _values,
+                _data
+            ) == ERC1155TokenReceiver.onERC1155BatchReceived.selector,
+            "400"
+        );
+    }
+
+    function _singleSafetyCheck(
+        address _from,
+        address _to,
+        uint256 _id,
+        uint256 _value,
+        bytes memory _data
+    ) internal {
+        // The recipient is not a contract
+        if (_to.code.length == 0) {
+            return;
+        }
+
+        // The transaction is not a mint/transfer of a token.
+        if (_to == address(0)) {
+            return;
+        }
+
+        require(
+            ERC1155TokenReceiver(_to).onERC1155Received(
+                msg.sender,
+                _from,
+                _id,
+                _value,
+                _data
+            ) == ERC1155TokenReceiver.onERC1155Received.selector,
+            "400"
+        );
+    }
 }
