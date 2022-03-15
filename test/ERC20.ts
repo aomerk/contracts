@@ -9,7 +9,7 @@ async function contracts() {
 	return erc20;
 }
 const MaxUint256 = (/*#__PURE__*/ethers.BigNumber.from("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"));
-describe.only("ERC20", function () {
+describe("ERC20", function () {
 	it("deploy", async function () {
 		await contracts()
 	});
