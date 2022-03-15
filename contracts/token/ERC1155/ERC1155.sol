@@ -93,8 +93,15 @@ contract ERC1155 {
         uint256 _value,
         bytes calldata _data
     ) external {
+        // MUST revert if `_to` is the zero address
         require(_to != address(0), "400");
 
+        // Caller must be approved to manage the tokens being transferred out of the `_from` account (see "Approval" section of the standard).
+        require(
+            isApprovedForAll[_from][msg.sender] || msg.sender == _from,
+            "403"
+        );
+        // MUST revert if balance of holder for token `_id` is lower than the `_value` sent.
         require(balanceOf[_from][_id] >= _value, "400");
 
         balanceOf[_from][_id] -= _value;
@@ -123,7 +130,9 @@ contract ERC1155 {
         MUST revert on any other error.
         MUST emit `TransferSingle` or `TransferBatch` event(s) such that all the balance changes are reflected (see "Safe Transfer Rules" section of the standard).
         Balance changes and events MUST follow the ordering of the arrays (_ids[0]/_values[0] before _ids[1]/_values[1], etc).
-        After the above conditions for the transfer(s) in the batch are met, this function MUST check if `_to` is a smart contract (e.g. code size > 0). If so, it MUST call the relevant `ERC1155TokenReceiver` hook(s) on `_to` and act appropriately (see "Safe Transfer Rules" section of the standard).
+        After the above conditions for the transfer(s) in the batch are met,
+		this function MUST check if `_to` is a smart contract (e.g. code size > 0).
+		If so, it MUST call the relevant `ERC1155TokenReceiver` hook(s) on `_to` and act appropriately (see "Safe Transfer Rules" section of the standard).
         @param _from    Source address
         @param _to      Target address
         @param _ids     IDs of each token type (order and length must match _values array)
@@ -137,10 +146,22 @@ contract ERC1155 {
         uint256[] calldata _values,
         bytes calldata _data
     ) external {
+        // MUST revert if `_to` is the zero address.
         require(_to != address(0), "400");
+
+        // MUST revert if length of `_ids` is not the same as length of `_values`.
         require(_ids.length == _values.length, "400");
 
+        // Caller must be approved to manage the tokens being transferred out of the `_from` account
+        // An owner SHOULD be assumed to always be able to operate on their own tokens regardless of approval status,
+        // so should SHOULD NOT have to call setApprovalForAll to approve themselves as an operator before they can operate on them.
+        require(
+            isApprovedForAll[_from][msg.sender] || msg.sender == _from,
+            "403"
+        );
+
         for (uint256 i = 0; i < _ids.length; i++) {
+            // MUST revert if any of the balance(s) of the holder(s) for token(s) in `_ids` is lower than the respective amount(s) in `_values` sent to the recipient.
             require(balanceOf[_from][_ids[i]] >= _values[i], "400");
 
             balanceOf[_from][_ids[i]] -= _values[i];

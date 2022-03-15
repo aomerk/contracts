@@ -71,10 +71,21 @@ describe.only("ERC1115", function () {
 
 	});
 	it("can set approval", async function () {
+		const erc1155 = await contracts();
+		const [owner, user, user1] = await ethers.getSigners();
 
-	});
-	it("can check for approval", async function () {
+		const ids = toBigNumberArray([1, 2, 3]);
+		const amounts = toBigNumberArray([10, 10, 10]);
 
+		await erc1155.batchMint(owner.address, ids, amounts, []);
+
+		await erc1155.setApprovalForAll(user.address, true);
+
+		await erc1155.connect(user).safeBatchTransferFrom(owner.address, user1.address, ids, amounts, []);
+
+		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(0);
+		expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
+		expect(await erc1155.balanceOf(user1.address, 1)).to.eq(10);
 	});
 	it("can transfer safely", async function () {
 		const erc1155 = await contracts();
