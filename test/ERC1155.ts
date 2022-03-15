@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { ethers } from "hardhat";
 
 async function contracts() {
-	const ERC1155 = await ethers.getContractFactory("MockERC1115");
+	const ERC1155 = await ethers.getContractFactory("MockERC1155");
 	const erc1155 = await ERC1155.deploy();
 	await erc1155.deployed();
 
@@ -15,8 +15,27 @@ describe.only("ERC1115", function () {
 	});
 
 	it("can mint single", async function () {
+		const erc1155 = await contracts();
+		const [owner, user] = await ethers.getSigners();
+		await erc1155.mint(owner.address, 1, 10, []);
+
+		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(10);
+		expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
+
+		// try to mint by a zero address
+		await expect(erc1155.mint(ethers.constants.AddressZero, 1, 10, [])).to.be.revertedWith("422");
 	});
 	it("can mint in batches", async function () {
+		const erc1155 = await contracts();
+		const [owner, user] = await ethers.getSigners();
+
+		const ids = toBigNumberArray([1, 2, 3]);
+		const amounts = toBigNumberArray([10, 10, 10]);
+
+		await erc1155.batchMint(owner.address, ids, amounts, []);
+
+		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(10);
+		expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
 	});
 	it("can burn", async function () {
 
