@@ -81,7 +81,7 @@ describe.only("ERC1115", function () {
 		const [owner, user, user2] = await ethers.getSigners();
 
 		const ids = 1;
-		const amounts = 1;
+		const amounts = 10;
 
 		await erc1155.mint(owner.address, ids, amounts, []);
 
