@@ -132,32 +132,49 @@ contract ERC1155 {
         uint256[] calldata _values,
         bytes calldata _data
     ) external {
+        require(_to != address(0), "400");
+        require(_ids.length == _values.length, "400");
+
+        for (uint256 i = 0; i < _ids.length; i++) {
+            require(balanceOf[_from][_ids[i]] >= _values[i], "400");
+
+            balanceOf[_from][_ids[i]] -= _values[i];
+            balanceOf[_to][_ids[i]] += _values[i];
+        }
+
+        // After the above conditions are met, this function MUST check if _to
+        // is a smart contract (e.g. code size > 0). If so, it MUST call onERC1155Received
+        //  or onERC1155BatchReceived on _to and act appropriately (see
+        // “onERC1155Received and onERC1155BatchReceived rules” section).
+
+        //		The _data argument provided by the sender for the transfer MUST
+        //  be passed with its contents unaltered to the ERC1155TokenReceiver
+        // hook function(s) via their _data argument.
+        _batchSafetyCheck(_from, _to, _ids, _values, _data);
+
+        // MUST emit TransferSingle or TransferBatch event(s) such that all the balance changes are reflected
+        // (see “TransferSingle and TransferBatch event rules” section).
         emit TransferBatch(msg.sender, _from, _to, _ids, _values);
     }
-
-    /**
-        @notice Get the balance of an account's tokens.
-        @param _owner  The address of the token holder
-        @param _id     ID of the token
-        @return        balance _owner's balance of the token type requested
-     */
-    function balanceOf(address _owner, uint256 _id)
-        external
-        view
-        returns (uint256 balance)
-    {}
 
     /**
         @notice Get the balance of multiple account/token pairs
         @param _owners The addresses of the token holders
         @param _ids    ID of the tokens
-        @return        The _owner's balance of the token types requested (i.e. balance for each (owner, id) pair)
+        @return result _owner's balance of the token types requested (i.e. balance for each (owner, id) pair)
      */
     function balanceOfBatch(address[] calldata _owners, uint256[] calldata _ids)
         external
         view
-        returns (uint256[] memory)
-    {}
+        returns (uint256[] memory result)
+    {
+        require(_owners.length == _ids.length, "422");
+        result = new uint256[](_owners.length);
+
+        for (uint256 i = 0; i < _owners.length; i++) {
+            result[i] = balanceOf[_owners[i]][_ids[i]];
+        }
+    }
 
     /**
         @notice Enable or disable approval for a third party ("operator") to manage all of the caller's tokens.
