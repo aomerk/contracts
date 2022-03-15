@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.3;
 
+import "./ERC1155TokenReceiver.sol";
+
+import "hardhat/console.sol";
+
 contract ERC1155 {
     /**
         @dev Either `TransferSingle` or `TransferBatch` MUST emit when tokens are transferred, including zero value transfers as well as minting or burning (see "Safe Transfer Rules" section of the standard).
@@ -59,6 +63,9 @@ contract ERC1155 {
 		True if the operator is approved, false if not
     */
     mapping(address => mapping(address => bool)) public isApprovedForAll;
+
+    /// @dev balanceOf is the amount of tokens that the given address has.
+    mapping(address => mapping(uint256 => uint256)) public balanceOf;
 
     /**
         @notice Transfers `_value` amount of an `_id` from the `_from` address to the `_to` address specified (with safety call).
