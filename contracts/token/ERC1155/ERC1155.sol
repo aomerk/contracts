@@ -158,30 +158,93 @@ contract ERC1155 {
      ********************************/
 
     function _mint(
-        address to,
-        uint256 id,
-        uint256 amount,
-        bytes memory data
-    ) internal virtual {}
+        address _to,
+        uint256 _id,
+        uint256 _value,
+        bytes memory _data
+    ) internal {
+        require(_to != address(0), "422");
+
+        balanceOf[_to][_id] += _value;
+
+        emit TransferSingle(msg.sender, address(0), _to, _id, _value);
+
+        // After the above conditions are met, this function MUST check if _to
+        // is a smart contract (e.g. code size > 0). If so, it MUST call onERC1155Received
+        //  or onERC1155BatchReceived on _to and act appropriately (see
+        // “onERC1155Received and onERC1155BatchReceived rules” section).
+        //		The _data argument provided by the sender for the transfer MUST
+        //	be passed with its contents unaltered to the ERC1155TokenReceiver
+        // 	hook function(s) via their _data argument.
+        _singleSafetyCheck(address(0), _to, _id, _value, _data);
+    }
 
     function _batchMint(
-        address to,
-        uint256[] memory ids,
-        uint256[] memory amounts,
-        bytes memory data
-    ) internal virtual {}
+        address _to,
+        uint256[] memory _ids,
+        uint256[] memory _values,
+        bytes memory _data
+    ) internal virtual {
+        require(_ids.length == _values.length, "422");
+        require(_to != address(0), "422");
+
+        for (uint256 i = 0; i < _ids.length; i++) {
+            balanceOf[_to][_ids[i]] += _values[i];
+        }
+
+        emit TransferBatch(msg.sender, address(0), _to, _ids, _values);
+
+        // After the above conditions are met, this function MUST check if _to
+        // is a smart contract (e.g. code size > 0). If so, it MUST call onERC1155Received
+        //  or onERC1155BatchReceived on _to and act appropriately (see
+        // “onERC1155Received and onERC1155BatchReceived rules” section).
+        //		The _data argument provided by the sender for the transfer MUST
+        //	be passed with its contents unaltered to the ERC1155TokenReceiver
+        // 	hook function(s) via their _data argument.
+        _batchSafetyCheck(address(0), _to, _ids, _values, _data);
+    }
 
     function _burn(
-        address from,
-        uint256 id,
-        uint256 amount
-    ) internal virtual {}
+        address _from,
+        uint256 _id,
+        uint256 _amount
+    ) internal virtual {
+        require(_from != address(0), "403");
+        require(balanceOf[_from][_id] >= _amount, "400");
+
+        balanceOf[_from][_id] -= _amount;
+
+        emit TransferSingle(msg.sender, _from, address(0), _id, _amount);
+    }
 
     function _batchBurn(
-        address from,
-        uint256[] memory ids,
-        uint256[] memory amounts
-    ) internal virtual {}
+        address _from,
+        uint256[] memory _ids,
+        uint256[] memory _amounts
+    ) internal virtual {
+        require(_from != address(0), "403");
+        require(_ids.length == _amounts.length, "400");
+
+        for (uint256 i = 0; i < _ids.length; i++) {
+            require(balanceOf[_from][_ids[i]] >= _amounts[i], "400");
+            balanceOf[_from][_ids[i]] -= _amounts[i];
+        }
+    }
+
+    /*******************************
+     *								*
+     *		utility functions		*
+     *								*
+     ********************************/
+
+    function _elemToArray(uint256 _elem)
+        internal
+        pure
+        returns (uint256[] memory arr)
+    {
+        arr = new uint256[](1);
+        arr[0] = _elem;
+    }
 
     function _batchSafetyCheck(
         address _from,
