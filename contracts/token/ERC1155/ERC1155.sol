@@ -88,6 +88,24 @@ contract ERC1155 {
         uint256 _value,
         bytes calldata _data
     ) external {
+        require(_to != address(0), "400");
+
+        require(balanceOf[_from][_id] >= _value, "400");
+
+        balanceOf[_from][_id] -= _value;
+        balanceOf[_to][_id] += _value;
+
+        // After the above conditions are met, this function MUST check if _to
+        // is a smart contract (e.g. code size > 0). If so, it MUST call onERC1155Received
+        //  or onERC1155BatchReceived on _to and act appropriately (see
+        // “onERC1155Received and onERC1155BatchReceived rules” section).
+        //		The _data argument provided by the sender for the transfer MUST
+        //	be passed with its contents unaltered to the ERC1155TokenReceiver
+        // 	hook function(s) via their _data argument.
+        _singleSafetyCheck(_from, _to, _id, _value, _data);
+
+        // MUST emit TransferSingle or TransferBatch event(s) such that all the balance changes are reflected
+        // (see “TransferSingle and TransferBatch event rules” section).
         emit TransferSingle(msg.sender, _from, _to, _id, _value);
     }
 
