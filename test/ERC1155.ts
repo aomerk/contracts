@@ -38,9 +38,30 @@ describe.only("ERC1115", function () {
 		expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
 	});
 	it("can burn", async function () {
+		const erc1155 = await contracts();
+		const [owner, user] = await ethers.getSigners();
+		await erc1155.mint(owner.address, 1, 10, []);
 
+		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(10);
+		expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
+
+		await erc1155.burn(owner.address, 1, 5);
+
+		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(5);
 	});
 	it("can burn in batches", async function () {
+		const erc1155 = await contracts();
+		const [owner, user] = await ethers.getSigners();
+
+		const ids = toBigNumberArray([1, 2, 3]);
+		const amounts = toBigNumberArray([10, 10, 10]);
+
+		await erc1155.batchMint(owner.address, ids, amounts, []);
+
+		await erc1155.batchBurn(owner.address, ids.slice(0, 1), amounts.slice(0, 1));
+
+		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(0);
+		expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
 
 	});
 	it("can get correct balance", async function () {
