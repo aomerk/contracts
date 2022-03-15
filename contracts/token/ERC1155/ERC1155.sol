@@ -183,6 +183,7 @@ contract ERC1155 {
         @param _approved  True if the operator is approved, false to revoke approval
     */
     function setApprovalForAll(address _operator, bool _approved) external {
+        isApprovedForAll[msg.sender][_operator] = _approved;
         emit ApprovalForAll(msg.sender, _operator, _approved);
     }
 
