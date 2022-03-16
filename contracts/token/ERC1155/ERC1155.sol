@@ -72,7 +72,9 @@ contract ERC1155 {
     /// @dev balanceOf is the amount of tokens that the given address has.
     mapping(address => mapping(uint256 => uint256)) public balanceOf;
 
-    /**
+	uint256 constant TRANSFER_EVENT_SIG = 0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
+	uint8 constant ERR_CODE_UNAUTH = 0x01;
+    /*
         @notice Transfers `_value` amount of an `_id` from the `_from` address to the `_to` address specified (with safety call).
         @dev Caller must be approved to manage the tokens being transferred out of the `_from` account (see "Approval" section of the standard).
         MUST revert if `_to` is the zero address.
@@ -93,32 +95,87 @@ contract ERC1155 {
         uint256 _value,
         bytes calldata _data
     ) external {
-        // MUST revert if `_to` is the zero address
-        require(_to != address(0), "400");
-
-        // Caller must be approved to manage the tokens being transferred out of the `_from` account (see "Approval" section of the standard).
         require(
-            isApprovedForAll[_from][msg.sender] || msg.sender == _from,
-            "403"
+            msg.sender == _from || isApprovedForAll[_from][msg.sender],
+             "422"
         );
-        // MUST revert if balance of holder for token `_id` is lower than the `_value` sent.
-        require(balanceOf[_from][_id] >= _value, "400");
 
-        balanceOf[_from][_id] -= _value;
-        balanceOf[_to][_id] += _value;
 
-        // After the above conditions are met, this function MUST check if _to
-        // is a smart contract (e.g. code size > 0). If so, it MUST call onERC1155Received
-        //  or onERC1155BatchReceived on _to and act appropriately (see
-        // “onERC1155Received and onERC1155BatchReceived rules” section).
-        //		The _data argument provided by the sender for the transfer MUST
-        //	be passed with its contents unaltered to the ERC1155TokenReceiver
-        // 	hook function(s) via their _data argument.
-        _singleSafetyCheck(_from, _to, _id, _value, _data);
+		// Do transfer work
+   		assembly {
+            function balanceOf(_f, _i) -> offset,value {
+                mstore(0x0, _f)
+                mstore(0x20, balanceOf.slot)
+				offset := keccak256(0x0, 0x40)
+                mstore(0x0, _i)
+                mstore(0x20, offset)
 
-        // MUST emit TransferSingle or TransferBatch event(s) such that all the balance changes are reflected
-        // (see “TransferSingle and TransferBatch event rules” section).
-        emit TransferSingle(msg.sender, _from, _to, _id, _value);
+				offset := keccak256(0x0, 0x40)
+                value := sload(offset)
+            }
+
+       		// MUST revert if `_to` is the zero address
+			if eq(_to, 0x0){
+				revert(0,0)
+			}
+
+            // remove balance from _from.
+            // it is possible for this operation to underflow
+            let offset, addressBalance := balanceOf(_from, _id)
+
+			// MUST revert if balance of holder for token `_id` is lower than the `_value` sent.
+            // underflow possible
+            if gt(_value, addressBalance) {
+                revert(0, 0)
+            }
+
+            // decrease balance of _from
+            sstore(offset, sub(addressBalance, _value))
+
+            // add balance to target
+            // balanceOf++ can't overflow, because totalSupply can't overflow.
+            // there is not enough value to overflow.
+            offset, addressBalance := balanceOf(_to, _id)
+
+            // balance value is sload(toOffset)
+			let newToBalance := add(addressBalance, _value)
+
+			// overflow test
+			if lt(newToBalance, addressBalance) {
+				revert(0, 0)
+			}
+
+			// set balance of _to to new value
+			sstore(offset,newToBalance)
+        }
+
+		//	MUST emit TransferSingle or TransferBatch event(s) such that
+		//	all the balance changes are reflected
+		//	(see “TransferSingle and TransferBatch event rules” section).
+		assembly{
+			mstore(0, _id)
+			mstore(0x20, _value)
+			log4(0, 0x40, TRANSFER_EVENT_SIG, caller(), _from,_to)
+		}
+
+		// if this is not a contract, don't check
+		// the ability to receive ERC1155 tokens
+		assembly{
+			if eq(extcodesize(_to), 0x0) {
+				return(0,0)
+			}
+		}
+
+        require(
+            ERC1155TokenReceiver(_to).onERC1155Received(
+                    msg.sender,
+                    _from,
+                    _id,
+                    _value,
+                    _data
+                ) == ERC1155TokenReceiver.onERC1155Received.selector,
+            "422"
+        );
     }
 
     /**
