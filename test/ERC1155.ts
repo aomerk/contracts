@@ -34,6 +34,11 @@ describe.only("ERC1115", function () {
 
 		await erc1155.batchMint(owner.address, ids, amounts, []);
 
+		// must ids and amount be arrays of the same length
+		await expect(erc1155.batchMint(owner.address, ids, [], [])).to.be.reverted;
+		// to can't be the zero address
+		await expect(erc1155.batchMint("0x", ids, amounts, [])).to.be.reverted;
+
 		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(10);
 		expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
 	});

@@ -38,6 +38,8 @@ contract ERC1155 {
         The `_values` argument MUST be the list of number of tokens (matching the list and order of tokens specified in _ids) the holder balance is decreased by and match what the recipient balance is increased by.
         When minting/creating tokens, the `_from` argument MUST be set to `0x0` (i.e. zero address).
         When burning/destroying tokens, the `_to` argument MUST be set to `0x0` (i.e. zero address).
+
+		@notice uses 5370 gas
     */
     event TransferBatch(
         address indexed _operator,
@@ -206,9 +208,6 @@ contract ERC1155 {
         // MUST revert if `_to` is the zero address.
         require(_to != address(0), "400");
 
-        // MUST revert if length of `_ids` is not the same as length of `_values`.
-        require(_ids.length == _values.length, "400");
-
         // Caller must be approved to manage the tokens being transferred out of the `_from` account
         // An owner SHOULD be assumed to always be able to operate on their own tokens regardless of approval status,
         // so should SHOULD NOT have to call setApprovalForAll to approve themselves as an operator before they can operate on them.
@@ -233,6 +232,12 @@ contract ERC1155 {
            // Load the length (first 32 bytes)
            let lenIds := mload(_ids)
            let lenValues := mload(_values)
+
+		   // MUST revert if length of `_ids` is not the same as length of `_values`.
+		   if xor(lenIds, lenValues) {
+			   	revert(0,0)
+		   }
+
            // Skip over the length field.
            //
            // Keep temporary variable so it can be incremented in place.
@@ -351,12 +356,54 @@ contract ERC1155 {
         uint256[] memory _values,
         bytes memory _data
     ) internal virtual {
-        require(_ids.length == _values.length, "422");
-        require(_to != address(0), "422");
+		assembly{
+			function balanceOf(_f, _i) -> offset,balanceAmount {
+					mstore(0x0, _f)
+					mstore(0x20, balanceOf.slot)
+					offset := keccak256(0x0, 0x40)
+					mstore(0x0, _i)
+					mstore(0x20, offset)
 
-        for (uint256 i = 0; i < _ids.length; i++) {
-            balanceOf[_to][_ids[i]] += _values[i];
-        }
+					offset := keccak256(0x0, 0x40)
+					balanceAmount := sload(offset)
+           	}
+
+			if eq(_to,0x00000000000000000000000000000000){
+				revert(0,0)
+			}
+
+			let ids_len := mload(_ids)
+			let values_len := mload(_values)
+
+			if xor(ids_len,values_len){
+				revert(0,0)
+			}
+
+			let ids := add(_ids, 0x20)
+        	let values := add(_values, 0x20)
+			for
+				{
+					let end := add(_ids, mul(ids_len,0x20))
+				}
+					lt(ids, end)
+				{
+					ids := add(ids, 0x20)
+					values := add(values, 0x20)
+				} {
+					let id := mload(ids)
+					let value := mload(values)
+
+					let toOffset, toBalance := balanceOf(_to,id)
+
+					// add the value to the balance
+					let newBalance := add(toBalance, value)
+				   	sstore(toOffset, newBalance)
+					//	check for overflow
+					if lt(newBalance, toBalance) {
+						revert(0,0)
+					}
+				}
+		}
 
         emit TransferBatch(msg.sender, address(0), _to, _ids, _values);
 
@@ -412,6 +459,7 @@ contract ERC1155 {
         arr[0] = _elem;
     }
 
+	/// @dev uses 195 gas
     function _batchSafetyCheck(
         address _from,
         address _to,
