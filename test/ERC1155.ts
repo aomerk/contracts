@@ -99,6 +99,9 @@ describe.only("ERC1115", function () {
 		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(10);
 		expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
 
+		await erc1155.setApprovalForAll(owner.address, true);
+		await erc1155.setApprovalForAll(user.address, true);
+
 		await erc1155.safeTransferFrom(owner.address, user.address, ids, amounts, []);
 
 		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(0);
@@ -121,6 +124,10 @@ describe.only("ERC1115", function () {
 
 		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(0);
 		expect(await erc1155.balanceOf(user.address, 1)).to.eq(10);
+
+		await expect(erc1155.safeBatchTransferFrom(owner.address, user.address, ids, amounts, [])).
+			to.be.reverted;
+
 	});
 });
 

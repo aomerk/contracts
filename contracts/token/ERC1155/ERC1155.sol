@@ -199,8 +199,8 @@ contract ERC1155 {
     function safeBatchTransferFrom(
         address _from,
         address _to,
-        uint256[] calldata _ids,
-        uint256[] calldata _values,
+        uint256[] memory _ids,
+        uint256[] memory _values,
         bytes calldata _data
     ) external {
         // MUST revert if `_to` is the zero address.
@@ -217,13 +217,60 @@ contract ERC1155 {
             "403"
         );
 
-        for (uint256 i = 0; i < _ids.length; i++) {
-            // MUST revert if any of the balance(s) of the holder(s) for token(s) in `_ids` is lower than the respective amount(s) in `_values` sent to the recipient.
-            require(balanceOf[_from][_ids[i]] >= _values[i], "400");
+		// Do transfer work
+			assembly{
+	            function balanceOf(_f, _i) -> offset,balanceAmount {
+					mstore(0x0, _f)
+					mstore(0x20, balanceOf.slot)
+					offset := keccak256(0x0, 0x40)
+					mstore(0x0, _i)
+					mstore(0x20, offset)
 
-            balanceOf[_from][_ids[i]] -= _values[i];
-            balanceOf[_to][_ids[i]] += _values[i];
-        }
+					offset := keccak256(0x0, 0x40)
+					balanceAmount := sload(offset)
+           		}
+
+           // Load the length (first 32 bytes)
+           let lenIds := mload(_ids)
+           let lenValues := mload(_values)
+           // Skip over the length field.
+           //
+           // Keep temporary variable so it can be incremented in place.
+           //
+           // NOTE: incrementing _data would result in an unusable
+           //       _data variable after this assembly block
+           let ids := add(_ids, 0x20)
+           let values := add(_values, 0x20)
+
+				for
+				{ let end := add(_ids, mul(lenIds,0x20)) }
+				lt(ids, end)
+				{
+					ids := add(ids, 0x20)
+					values := add(values, 0x20)
+				} {
+					let id := mload(ids)
+					let value := mload(values)
+
+					let fromOffset, fromBalance := balanceOf(_from,id )
+					let toOffset, toBalance := balanceOf(_to, id)
+
+           			// MUST revert if any of the balance(s) of the holder(s) for
+					//  token(s) in `_ids` is lower than the respective amount(s)
+					// in `_values` sent to the recipient.
+					if gt(value, fromBalance) {
+						revert(0,0)
+					}
+					sstore(fromOffset, sub(fromBalance, value))
+
+					//	check for overflow
+					let newBalance := add(toBalance, value)
+				   	sstore(toOffset, newBalance)
+					if lt(newBalance, toBalance) {
+						revert(0,0)
+					}
+				}
+			}
 
         // After the above conditions are met, this function MUST check if _to
         // is a smart contract (e.g. code size > 0). If so, it MUST call onERC1155Received
