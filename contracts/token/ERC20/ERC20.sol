@@ -170,6 +170,7 @@ abstract contract ERC20 {
 
             // check if the sender has enough tokens to spend
             // if (fromAllowance >= value || from == msg.sender)
+            // TODO - correct binary operator usage with xor/xnor
             if and(lt(fromAllowance, _value), not(eq(_from, caller()))) {
                 revert(0, 0)
             }
