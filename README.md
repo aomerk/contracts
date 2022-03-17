@@ -28,3 +28,22 @@ Highlights:
 
 See [ERC1155 Implementation](./contracts/token/ERC1155) for more details
 
+## ERC20
+Highlights:
+- I don't think there is a single more gas left to save.
+- Although, erc20 is widely used in mainnet and every single dime counts. **0.78%** cheaper to call `transfer`
+
+
+| erc20                   | keser  | solmate | % of improvement | openzeppelin | % of improvement |
+| ----------------------- | ------ | ------- | ---------------- | ------------ | ---------------- |
+| approve                 | 46032  | 46117   | 0.18%            | 46197        | 0.36%            |
+| burn                    | 33891  | 34037   | 0.43%            | 34160        | 0.79%            |
+| mint                    | 68163  | 68197   | 0.05%            | 68311        | 0.22%            |
+| transfer                | 51122  | 51248   | 0.25%            | 51520        | 0.78%            |
+| transferFrom            | 51946  | 52341   | 0.76%            | 54552        | 5.02%            |
+| MockDeployment          | 738053 | 782147  | 5.97%            | 743374       | 0.72%            |
+| Total (exc. Deployment) |        |         | 0.33%            |              | 1.43%            |
+| Total                   |        |         | 1.27%            |              | 1.31%            |
+
+See [ERC20 Implementation](./contracts/token/ERC20) for more details
+
