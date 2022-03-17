@@ -168,28 +168,15 @@ abstract contract ERC20 {
             let fromAllowanceOffset := keccak256(0x0, 0x40)
             let fromAllowance := sload(fromAllowanceOffset)
 
-            // check if the sender has enough tokens to spend
-            // if (fromAllowance >= value || from == msg.sender)
-            // TODO - correct binary operator usage with xor/xnor
-            if and(lt(fromAllowance, _value), not(eq(_from, caller()))) {
+            // authorize sender
+            // either sender is from or is allowed to spend enough
+            // fromAllowance >= value, "bad"
+            if lt(fromAllowance, _value) {
                 revert(0, 0)
             }
 
             // reduce allowance of spender
             sstore(fromAllowanceOffset, sub(fromAllowance, _value))
-            /*
-
-
-
-			 */
-
-            /*
-
-
-			start transfer
-
-
-			 */
 
             // remove balance from _from.
             // it is possible for this operation to underflow
