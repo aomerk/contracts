@@ -373,6 +373,17 @@ contract ERC1155 {
 
     /*******************************
      *								*
+     *			ERC165				*
+     *								*
+     ********************************/
+	function supportsInterface(bytes4 interfaceId) public pure virtual returns (bool) {
+        return
+            interfaceId == 0x01ffc9a7 || // ERC165 Interface ID for ERC165
+            interfaceId == 0xd9b67a26;  // ERC165 Interface ID for ERC1155
+    }
+
+	/*******************************
+     *								*
      *		minting and burning		*
      *								*
      ********************************/
@@ -383,7 +394,7 @@ contract ERC1155 {
         uint256 _value,
         bytes memory _data
     ) internal {
-  	assembly{
+		assembly{
 			if eq(_to, 0x00000000000000000000000000000000) {
 				revert(0, 0)
 			}
@@ -440,7 +451,7 @@ contract ERC1155 {
             ) == ERC1155TokenReceiver.onERC1155Received.selector,
             "422"
         );
-}
+	}
 
     function _batchMint(
         address _to,
@@ -627,4 +638,4 @@ contract ERC1155 {
             "400"
         );
     }
-}
+	}
