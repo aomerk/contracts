@@ -34,6 +34,9 @@ const config: HardhatUserConfig = {
 	},
 
 	networks: {
+		hardhat: {
+			gas: "auto"
+		},
 		ropsten: {
 			url: process.env.ROPSTEN_URL || "",
 			accounts:
