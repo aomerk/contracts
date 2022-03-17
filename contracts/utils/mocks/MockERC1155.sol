@@ -2,23 +2,23 @@
 pragma solidity ^0.8.3;
 
 import "hardhat/console.sol";
-// import "../../token/ERC1155/ERC1155.sol";
+import "../../token/ERC1155/ERC1155.sol";
 
 // import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
-import "@rari-capital/solmate/src/tokens/ERC1155.sol";
+// import "@rari-capital/solmate/src/tokens/ERC1155.sol";
 
 contract MockERC1155 is ERC1155 {
-    string internal blah = "blah";
+    // string internal blah = "blah";
 
-    function uri(uint256 id)
-        public
-        view
-        virtual
-        override
-        returns (string memory)
-    {
-        return blah;
-    }
+    // function uri(uint256 id)
+    //     public
+    //     view
+    //     virtual
+    //     override
+    //     returns (string memory)
+    // {
+    //     return blah;
+    // }
 
     function mint(
         address to,

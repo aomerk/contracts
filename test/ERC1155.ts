@@ -100,21 +100,53 @@ describe.only("ERC1115", function () {
 
 		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(5);
 	});
-	it("can burn in batches", async function () {
-		const erc1155 = await contracts();
-		const [owner, user] = await ethers.getSigners();
+	describe("batch burn", function () {
+		it("can burn in batches", async function () {
+			const erc1155 = await contracts();
+			const [owner, user] = await ethers.getSigners();
 
-		const ids = toBigNumberArray([1, 2, 3]);
-		const amounts = toBigNumberArray([10, 10, 10]);
+			const ids = toBigNumberArray([1, 2, 3]);
+			const amounts = toBigNumberArray([10, 10, 10]);
 
-		await erc1155.batchMint(owner.address, ids, amounts, []);
+			await erc1155.batchMint(owner.address, ids, amounts, []);
 
-		await erc1155.batchBurn(owner.address, ids.slice(0, 1), amounts.slice(0, 1));
+			await erc1155.batchBurn(owner.address, ids.slice(0, 1), amounts.slice(0, 1));
 
-		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(0);
-		expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
+			expect(await erc1155.balanceOf(owner.address, 1)).to.eq(0);
+			expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
+		});
 
+		it("can burn various batches", async function () {
+			const erc1155 = await contracts();
+			const [owner, user, user2] = await ethers.getSigners();
+			let numIds = []
+			let numAmounts = []
+			let numItems = 10;
+			for (let i = 1; i < numItems; i++) {
+				numIds.push(i);
+				numAmounts.push(i * 100 * (numItems - 1));
+			}
+
+			const ids = toBigNumberArray(numIds);
+			const amounts = toBigNumberArray(numAmounts);
+
+			await erc1155.batchMint(owner.address, ids, amounts, []);
+
+			numIds = []
+			numAmounts = []
+			for (let i = 1; i < numItems; i++) {
+				numIds.push(i);
+				numAmounts.push(i * 100);
+				const ids = toBigNumberArray(numIds);
+				const amounts = toBigNumberArray(numAmounts);
+
+				await erc1155.batchBurn(owner.address, ids, amounts);
+			}
+			expect(await erc1155.balanceOf(owner.address, 1)).to.eq(0);
+			expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
+		});
 	});
+
 	it("can get correct balance", async function () {
 
 	});
