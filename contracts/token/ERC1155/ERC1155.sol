@@ -554,15 +554,68 @@ contract ERC1155 {
     function _batchBurn(
         address _from,
         uint256[] memory _ids,
-        uint256[] memory _amounts
+        uint256[] memory _values
     ) internal virtual {
-        require(_from != address(0), "403");
-        require(_ids.length == _amounts.length, "400");
+        // require(_from != address(0), "403");
+        // require(_ids.length == _amounts.length, "400");
 
-        for (uint256 i = 0; i < _ids.length; i++) {
-            require(balanceOf[_from][_ids[i]] >= _amounts[i], "400");
-            balanceOf[_from][_ids[i]] -= _amounts[i];
+        // for (uint256 i = 0; i < _ids.length; i++) {
+            // require(balanceOf[_from][_ids[i]] >= _values[i], "400");
+            // balanceOf[_from][_ids[i]] -= _values[i];
+        // }
+		   assembly {
+			// MUST throw if _to is the zero address
+            if eq(_from, 0x00000000000000000000000000000000) {
+                revert(0, 0)
+            }
+
+            let ids_len := mload(_ids)
+            let values_len := mload(_values)
+
+			// MUST throw if length of `_ids` is not the same as length of `_values`.
+            if xor(ids_len, values_len) {
+                revert(0, 0)
+            }
+
+			// skip first one since it stores the length
+            let ids := add(_ids, 0x20)
+            let values := add(_values, 0x20)
+
+            for
+			{
+				// word size is 0x20
+				let end := add(ids, mul(ids_len, 0x20))
+				mstore(0x0, _from)
+				mstore(0x20, balanceOf.slot)
+
+				// keep pointer to _to at memory location 0x20
+				mstore(0x20, keccak256(0x0, 0x40))
+            }
+				lt(ids, end)
+			 {
+                ids := add(ids, 0x20)
+                values := add(values, 0x20)
+            } {
+				// get balance
+                mstore(0x0, mload(ids))
+                let balanceOffset := keccak256(0x0, 0x40)
+
+                let fromBalance := sload(balanceOffset)
+
+
+                //	check for under
+                if lt(fromBalance, mload(values)) {
+                    revert(0, 0)
+                }
+
+                // add the value to the balance
+                let newBalance := sub(fromBalance, mload(values))
+                sstore(balanceOffset, newBalance)
+
+            }
         }
+
+		emit TransferBatch(msg.sender, _from, address(0), _ids, _values);
     }
 
     /*******************************
