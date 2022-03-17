@@ -71,6 +71,23 @@ describe.only("ERC1115", function () {
 		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(10);
 		expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
 	});
+	it("can mint various batches", async function () {
+		const erc1155 = await contracts();
+		const [owner, user, user2] = await ethers.getSigners();
+		let numIds = []
+		let numAmounts = []
+		for (let i = 1; i < 100; i++) {
+			numIds.push(i);
+			numAmounts.push(i * 100);
+			const ids = toBigNumberArray(numIds);
+			const amounts = toBigNumberArray(numAmounts);
+
+			await erc1155.batchMint(owner.address, ids, amounts, []);
+		}
+		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(numIds.length * 100);
+		expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
+	});
+
 	it("can burn", async function () {
 		const erc1155 = await contracts();
 		const [owner, user] = await ethers.getSigners();
@@ -112,6 +129,9 @@ describe.only("ERC1115", function () {
 		const amounts = toBigNumberArray([10, 10, 10]);
 
 		await erc1155.batchMint(owner.address, ids, amounts, []);
+		expect(await erc1155.balanceOf(owner.address, 1)).to.eq(10);
+		expect(await erc1155.balanceOf(owner.address, 2)).to.eq(10);
+		expect(await erc1155.balanceOf(owner.address, 3)).to.eq(10);
 
 		await erc1155.setApprovalForAll(user.address, true);
 
@@ -225,8 +245,8 @@ describe.only("ERC1115", function () {
 			const amounts = 10;
 			await erc1155.mint(owner.address, ids, amounts, []);
 
-			// MUST revert if balance of holder for token `_id` is lower than the `_value` sent.
-			await expect(erc1155.connect(user).safeTransferFrom(owner.address, user.address, ids, amounts, [])).to.be.reverted;
+			await expect(erc1155.connect(user).safeTransferFrom(
+				owner.address, user.address, ids, amounts, [])).to.be.reverted;
 		});
 	});
 	describe("safeBatchTransfer", async function () {
@@ -274,6 +294,41 @@ describe.only("ERC1115", function () {
 
 			await expect(erc1155.safeBatchTransferFrom(owner.address, user.address, ids, amounts, [])).
 				to.be.reverted;
+		});
+		it("can transfer various sizes of batches", async function () {
+			const erc1155 = await contracts();
+			const [owner, user, user2] = await ethers.getSigners();
+
+			let numIds = []
+			let numAmounts = []
+			let numItems = 2
+			for (let i = 1; i < numItems; i++) {
+				numIds.push(i);
+				numAmounts.push(i * 100);
+				const ids = toBigNumberArray(numIds);
+				const amounts = toBigNumberArray(numAmounts);
+
+				await erc1155.batchMint(owner.address, ids, amounts, []);
+			}
+
+			expect(await erc1155.balanceOf(owner.address, 1)).to.eq(numIds.length * 100);
+			expect(await erc1155.balanceOf(user.address, 1)).to.eq(0);
+
+			numIds = []
+			numAmounts = []
+			for (let i = 1; i < numItems; i++) {
+				numIds.push(i);
+				numAmounts.push(i * 100);
+				const ids = toBigNumberArray(numIds);
+				const amounts = toBigNumberArray(numAmounts);
+
+				await erc1155.safeBatchTransferFrom(owner.address, user.address, ids, amounts, []);
+
+			}
+
+
+			expect(await erc1155.balanceOf(owner.address, 1)).to.eq(0);
+			expect(await erc1155.balanceOf(user.address, 1)).to.eq(numIds.length * 100);
 		});
 
 		it("reverts on zero recipient", async function () {
