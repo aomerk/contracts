@@ -28,6 +28,8 @@ contract ERC1155 {
         uint256 _id,
         uint256 _value
     );
+	// TransferSingle(address,address,address,uint256,uint256)
+	uint256 internal constant SINGLE_TRANSFER_EVENT_HASH = 0xc3d58168c5ae7397731d063d5bbf3d657854427343f4c083240f7aacaa2d0f62;
 
     /**
         @dev Either `TransferSingle` or `TransferBatch` MUST emit when tokens are transferred, including zero value transfers as well as minting or burning (see "Safe Transfer Rules" section of the standard).
@@ -57,6 +59,8 @@ contract ERC1155 {
         address indexed _operator,
         bool _approved
     );
+	// ApprovalForAll(address,address,bool)
+	uint256 internal constant APPROVAL_FOR_ALL_EVENT_HASH = 0x17307eab39ab6107e8899845ad3d59bd9653f200f220920489ca2b5937696c31;
 
     /**
         @dev MUST emit when the URI is updated for a token ID.
@@ -74,8 +78,6 @@ contract ERC1155 {
     /// @dev balanceOf is the amount of tokens that the given address has.
     mapping(address => mapping(uint256 => uint256)) public balanceOf;
 
-    uint256 constant TRANSFER_EVENT_SIG =
-        0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
     uint8 constant ERR_CODE_UNAUTH = 0x01;
 
     /*
@@ -99,14 +101,16 @@ contract ERC1155 {
         uint256 _value,
         bytes calldata _data
     ) external {
-		assembly {
-			// MUST revert if `_to` is the zero address.
-			if eq(_to, 0x0) {
-				revert(0,0)
-			}
 
+		assembly {
+            /************************************
+             *									*
+             *		utility functions 			*
+             *									*
+             ************************************/
 			// Caller must be approved to manage the tokens being transferred
 			function authorize(_f) -> result{
+				// leave true if the from is caller
 				if eq(caller(),_f){
 					leave
 				}
@@ -115,6 +119,7 @@ contract ERC1155 {
 				mstore(0x20, isApprovedForAll.slot)
 				mstore(0x20,keccak256(0x0,0x40))
 				mstore(0x0,caller())
+				// leave if approved is true
 				if sload(keccak256(0x0,0x40)) {
 					leave
 				}
@@ -134,53 +139,84 @@ contract ERC1155 {
                 value := sload(offset)
             }
 
+			/************************************
+             *									*
+             *		control recipient			*
+             *									*
+             ************************************/
+			// MUST revert if `_to` is the zero address.
+			if eq(_to, 0x0) {
+				revert(0,0)
+			}
+
 			pop(authorize(_from))
 
 
-            // MUST revert if `_to` is the zero address
-            if eq(_to, 0x0) {
-                revert(0, 0)
-            }
-
+			/************************************
+             *									*
+             *		check _from balance			*
+             *									*
+             ************************************/
             // remove balance from _from.
             // it is possible for this operation to underflow
-            let offset, addressBalance := balanceOf(_from, _id)
+            let offset, balanceOfFrom := balanceOf(_from, _id)
 
             // MUST revert if balance of holder for token `_id` is lower than the `_value` sent.
             // underflow possible.
-            if gt(_value, addressBalance) {
+            if gt(_value, balanceOfFrom) {
                 revert(0, 0)
             }
 
+
+			/************************************
+             *									*
+             *		decrease _from balance		*
+             *									*
+             ************************************/
             // decrease balance of _from
-            sstore(offset, sub(addressBalance, _value))
+            sstore(offset, sub(balanceOfFrom, _value))
+
+
+			/************************************
+             *									*
+             *		increase _to balance		*
+             *									*
+             ************************************/
 
             // add balance to target
             // balanceOf++ can't overflow, because totalSupply can't overflow.
             // there is not enough value to overflow.
-            offset, addressBalance := balanceOf(_to, _id)
+           let offsetTo, balanceOfTo := balanceOf(_to, _id)
 
             // balance value is sload(toOffset)
-            let newToBalance := add(addressBalance, _value)
+            let newToBalance := add(balanceOfTo, _value)
 
             // overflow test
-            if lt(newToBalance, addressBalance) {
+            if lt(newToBalance, balanceOfTo) {
                 revert(0, 0)
             }
 
             // set balance of _to to new value
-            sstore(offset, newToBalance)
-        }
+            sstore(offsetTo, newToBalance)
 
+		/************************************
+		*									*
+		*		emit TransferSingle event	*
+		*									*
+		************************************/
         //	MUST emit TransferSingle or TransferBatch event(s) such that
         //	all the balance changes are reflected
         //	(see “TransferSingle and TransferBatch event rules” section).
-        assembly {
-            mstore(0, _id)
-            mstore(0x20, _value)
-            log4(0, 0x40, TRANSFER_EVENT_SIG, caller(), _from, _to)
+		mstore(0x00, _id)
+		mstore(0x20, _value)
+        log4(0x00, 0x40, SINGLE_TRANSFER_EVENT_HASH, caller(),_from, _to)
         }
 
+		/************************************
+        *									*
+        *	post transfer safety check		*
+        *									*
+        ************************************/
         // if this is not a contract, don't check
         // the ability to receive ERC1155 tokens
         assembly {
@@ -236,6 +272,12 @@ contract ERC1155 {
 
         // Do transfer work
         assembly {
+			/************************************
+             *									*
+             *		check input parameters		*
+             *									*
+             ************************************/
+
 			// MUST revert if `_to` is the zero address.
 			if eq(_to, 0x0){
 				revert(0, 0)
@@ -244,11 +286,16 @@ contract ERC1155 {
             let lenIds := mload(_ids)
             let lenValues := mload(_values)
 
-            // MUST revert if length of `_ids` is not the same as length of `_values`.
-            if xor(lenIds, lenValues) {
+			// MUST revert if length of `_ids` is not the same as length of `_values`.
+            if iszero(eq(lenIds, lenValues)) {
                 revert(0, 0)
             }
 
+			/************************************
+             *									*
+             *		iterate ids/values			*
+             *									*
+             ************************************/
             // Skip over the length field.
             //
             // Keep temporary variable so it can be incremented in place.
@@ -268,21 +315,12 @@ contract ERC1155 {
 				// so the id must be at memory location 0x00
 				//
 				let toBalLoc := keccak256(0x0, 0x40)
-				//
-				//
-				//
 				// switch pointer _to => _from
 				mstore(0x00, _from)
-				mstore(0x20, balanceOf.slot)
 				// compute pointer to _from
 				//
 				// keep pointer to _from at memory location 0x60
-				// do the id must be at 0x40
 				let fromBalLoc := keccak256(0x00, 0x40)
-				//
-				//
-				//
-				//
             }
 			lt(ids, end)
 			 {
@@ -293,7 +331,11 @@ contract ERC1155 {
                 mstore(0x20, toBalLoc)
 				let value := mload(values)
 
-
+				/************************************
+				*									*
+				*		increase _to balance		*
+				*									*
+				************************************/
 				//  0x00 == id balanceOf[_][id], 0x20 == balanceOf[_to]
                 let toBalanceLoc := keccak256(0x0, 0x40)
                 let toBalance := sload(toBalanceLoc)
@@ -307,8 +349,11 @@ contract ERC1155 {
 
 				sstore(toBalanceLoc, newBalance)
 
-				// handle from
-
+				/************************************
+				*									*
+				*		decrease _from balance		*
+				*									*
+				************************************/
 				//  0x00 == id balanceOf[_][id], 0x20 == balanceOf[_from]
 				mstore(0x20, fromBalLoc)
 
@@ -322,8 +367,11 @@ contract ERC1155 {
                     revert(0, 0)
                 }
 
+				// decrease _from balance if all is ok
                 sstore(fromBalanceLoc, sub(fromBalance, value))
             }
+
+
         }
 
         // After the above conditions are met, this function MUST check if _to
@@ -336,6 +384,11 @@ contract ERC1155 {
         // hook function(s) via their _data argument.
         _batchSafetyCheck(_from, _to, _ids, _values, _data);
 
+		/************************************
+		*									*
+		*		emit TransferBatch event	*
+		*									*
+		************************************/
         // MUST emit TransferSingle or TransferBatch event(s) such that all the balance changes are reflected
         // (see “TransferSingle and TransferBatch event rules” section).
         emit TransferBatch(msg.sender, _from, _to, _ids, _values);
@@ -368,6 +421,7 @@ contract ERC1155 {
     */
     function setApprovalForAll(address _operator, bool _approved) external {
         isApprovedForAll[msg.sender][_operator] = _approved;
+
         emit ApprovalForAll(msg.sender, _operator, _approved);
     }
 
@@ -395,10 +449,21 @@ contract ERC1155 {
         bytes memory _data
     ) internal {
 		assembly{
+			/************************************
+             *									*
+             *		check input parameters		*
+             *									*
+             ************************************/
+			//  _to can't be the zero address
 			if eq(_to, 0x00000000000000000000000000000000) {
 				revert(0, 0)
 			}
 
+			/************************************
+             *									*
+             *		retrieve _to balance		*
+             *									*
+             ************************************/
 			// get balance
 			mstore(0x0, _to)
 			mstore(0x20, balanceOf.slot)
@@ -407,24 +472,31 @@ contract ERC1155 {
 			let balanceOffset := keccak256(0x0, 0x40)
 			let balanceAmount := sload(balanceOffset)
 
-			// subtract the value from the balance
+			/************************************
+             *									*
+             *		update _to balance 			*
+             *									*
+             ************************************/
 			sstore(balanceOffset, add(balanceAmount, _value))
 
 			// check for overflow: if new value is less than old value, revert
 			if lt(sload(balanceOffset), balanceAmount) {
 				revert(0, 0)
 			}
-		}
 
 
+		/************************************
+		*									*
+		*		emit TransferSingle event	*
+		*									*
+		************************************/
         //	MUST emit TransferSingle or TransferBatch event(s) such that
         //	all the balance changes are reflected
         //	(see “TransferSingle and TransferBatch event rules” section).
-        assembly {
-            mstore(0, _id)
-            mstore(0x20, _value)
-            log4(0, 0x40, TRANSFER_EVENT_SIG, caller(), 0x00, _to)
-        }
+		mstore(0x00, _id)
+		mstore(0x20, _value)
+        log4(0x00, 0x40, SINGLE_TRANSFER_EVENT_HASH, caller(),0x00, _to)
+		}
 
         // if this is not a contract, don't check
         // the ability to receive ERC1155 tokens
@@ -460,6 +532,11 @@ contract ERC1155 {
         bytes memory _data
     ) internal virtual {
         assembly {
+			/************************************
+             *									*
+             *		check input parameters		*
+             *									*
+             ************************************/
 			// MUST throw if _to is the zero address
             if eq(_to, 0x00000000000000000000000000000000) {
                 revert(0, 0)
@@ -469,10 +546,15 @@ contract ERC1155 {
             let values_len := mload(_values)
 
 			// MUST throw if length of `_ids` is not the same as length of `_values`.
-            if xor(ids_len, values_len) {
+            if iszero(eq(ids_len, values_len)) {
                 revert(0, 0)
             }
 
+			/************************************
+             *									*
+             *		iterate ids/values			*
+             *									*
+             ************************************/
 			// skip first one since it stores the length
             let ids := add(_ids, 0x20)
             let values := add(_values, 0x20)
@@ -492,6 +574,11 @@ contract ERC1155 {
                 ids := add(ids, 0x20)
                 values := add(values, 0x20)
             } {
+			/************************************
+             *									*
+             *			update _to balance		*
+             *									*
+             ************************************/
 				// get balance
                 mstore(0x0, mload(ids))
                 let balanceOffset := keccak256(0x0, 0x40)
@@ -509,8 +596,19 @@ contract ERC1155 {
             }
         }
 
+		/************************************
+		*									*
+		*		emit Transfer event			*
+		*									*
+		************************************/
         emit TransferBatch(msg.sender, address(0), _to, _ids, _values);
 
+
+		/************************************
+		*									*
+		*		check transfer safety		*
+		*									*
+		************************************/
         // After the above conditions are met, this function MUST check if _to
         // is a smart contract (e.g. code size > 0). If so, it MUST call onERC1155Received
         //  or onERC1155BatchReceived on _to and act appropriately (see
@@ -527,10 +625,21 @@ contract ERC1155 {
         uint256 _amount
     ) internal virtual {
 		assembly{
+			/************************************
+			*									*
+			*		check input parameters		*
+			*									*
+			************************************/
+			// Must throw if _from is the zero address
 			if eq(_from, 0x00000000000000000000000000000000) {
 				revert(0, 0)
 			}
 
+			/************************************
+			*									*
+			*		update _from balance		*
+			*									*
+			************************************/
 			// get balance
 			mstore(0x0, _from)
 			mstore(0x20, balanceOf.slot)
@@ -546,9 +655,20 @@ contract ERC1155 {
 
 			// subtract the value from the balance
 			sstore(balanceOffset, sub(balanceAmount, _amount))
-		}
 
-        emit TransferSingle(msg.sender, _from, address(0), _id, _amount);
+
+			/************************************
+			*									*
+			*		emit TransferSingle event	*
+			*									*
+			************************************/
+			//	MUST emit TransferSingle or TransferBatch event(s) such that
+			//	all the balance changes are reflected
+			//	(see “TransferSingle and TransferBatch event rules” section).
+			mstore(0x00, _id)
+			mstore(0x20, _amount)
+			log4(0x00, 0x40, SINGLE_TRANSFER_EVENT_HASH, caller(),_from, 0x00)
+		}
     }
 
     function _batchBurn(
@@ -556,14 +676,12 @@ contract ERC1155 {
         uint256[] memory _ids,
         uint256[] memory _values
     ) internal virtual {
-        // require(_from != address(0), "403");
-        // require(_ids.length == _amounts.length, "400");
-
-        // for (uint256 i = 0; i < _ids.length; i++) {
-            // require(balanceOf[_from][_ids[i]] >= _values[i], "400");
-            // balanceOf[_from][_ids[i]] -= _values[i];
-        // }
 		   assembly {
+			/************************************
+			*									*
+			*		check input parameters		*
+			*									*
+			************************************/
 			// MUST throw if _to is the zero address
             if eq(_from, 0x00000000000000000000000000000000) {
                 revert(0, 0)
@@ -577,6 +695,11 @@ contract ERC1155 {
                 revert(0, 0)
             }
 
+			/************************************
+			*									*
+			*		iterate ids/values			*
+			*									*
+			************************************/
 			// skip first one since it stores the length
             let ids := add(_ids, 0x20)
             let values := add(_values, 0x20)
@@ -596,6 +719,11 @@ contract ERC1155 {
                 ids := add(ids, 0x20)
                 values := add(values, 0x20)
             } {
+				/************************************
+				*									*
+				*			update balance			*
+				*									*
+				************************************/
 				// get balance
                 mstore(0x0, mload(ids))
                 let balanceOffset := keccak256(0x0, 0x40)
@@ -603,7 +731,7 @@ contract ERC1155 {
                 let fromBalance := sload(balanceOffset)
 
 
-                //	check for under
+                //	check for underflow
                 if lt(fromBalance, mload(values)) {
                     revert(0, 0)
                 }
@@ -615,6 +743,11 @@ contract ERC1155 {
             }
         }
 
+		/************************************
+		*									*
+		*		emit Transfer event 		*
+		*									*
+		************************************/
 		emit TransferBatch(msg.sender, _from, address(0), _ids, _values);
     }
 

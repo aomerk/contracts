@@ -11,7 +11,7 @@ keser mock contract
 
 import "../../token/ERC721/ERC721.sol";
 
-contract MockERC721 is ERC721 {
+contract MockERC721 is ERC721("Mock", "Mock ERC721") {
     string contractName;
 
     function tokenURI(uint256 _id)
@@ -22,10 +22,6 @@ contract MockERC721 is ERC721 {
         returns (string memory)
     {
         return contractName;
-    }
-
-    constructor(string memory _contractName) ERC721("Mock", "Mock ERC721") {
-        contractName = _contractName;
     }
 
     function mint(address to, uint256 tokenId) public virtual {
@@ -60,13 +56,7 @@ solmate mock contract
 /*
 import "@rari-capital/solmate/src/tokens/ERC721.sol";
 
-contract MockERC721 is ERC721 {
-    string contractName;
-
-    constructor(string memory _contractName) ERC721("Mock", "Mock ERC721") {
-        contractName = _contractName;
-    }
-
+contract MockERC721 is ERC721("Mock", "Mock ERC721") {
     ///
     ///  @dev See {IERC721Metadata-tokenURI}.
     ///
@@ -103,13 +93,7 @@ contract MockERC721 is ERC721 {
 /*
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
-contract MockERC721 is ERC721 {
-    string internal contractName;
-
-    constructor(string memory _contractName) ERC721("Mock", "Mock ERC721") {
-        contractName = _contractName;
-    }
-
+contract MockERC721 is ERC721("Mock", "Mock ERC721") {
     ///
     ///  @dev See {IERC721Metadata-tokenURI}.
     ///

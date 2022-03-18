@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 
 async function contracts() {
 	const ERC721 = await ethers.getContractFactory("MockERC721");
-	const erc721 = await ERC721.deploy("x");
+	const erc721 = await ERC721.deploy();
 	await erc721.deployed();
 
 	return erc721;
