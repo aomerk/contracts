@@ -10,7 +10,7 @@ async function contracts() {
 	return erc1155;
 }
 
-describe.only("ERC1115", function () {
+describe("ERC1115", function () {
 	let erc1155: MockERC1155;
 	let users: any[];
 	this.beforeEach(async function () {
