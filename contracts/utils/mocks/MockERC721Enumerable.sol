@@ -1,20 +1,29 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.3;
 
+// import "@rari-capital/solmate/src/tokens/ERC721.sol";
+
 /*
 
-
-keser mock contract
+keser
 
 
  */
+import "../../token/ERC721/ERC721Enumerable.sol";
 
-import "../../token/ERC721/ERC721.sol";
-
-contract MockERC721 is ERC721 {
+contract MockERC721Enumerable is ERC721Enumerable {
     string contractName;
 
-    function tokenURI(uint256 _id)
+    constructor(string memory _contractName)
+        ERC721("Eat The Blocks NFTs", "ETBNFT")
+    {
+        contractName = _contractName;
+    }
+
+    // /**
+    //  * @dev See {IERC721Metadata-tokenURI}.
+    //  */
+    function tokenURI(uint256 tokenId)
         public
         view
         virtual
@@ -22,10 +31,6 @@ contract MockERC721 is ERC721 {
         returns (string memory)
     {
         return contractName;
-    }
-
-    constructor(string memory _contractName) ERC721("Mock", "Mock ERC721") {
-        contractName = _contractName;
     }
 
     function mint(address to, uint256 tokenId) public virtual {
@@ -50,26 +55,19 @@ contract MockERC721 is ERC721 {
 }
 
 /*
-
-
-solmate mock contract
-
-
- */
-
-/*
 import "@rari-capital/solmate/src/tokens/ERC721.sol";
-
-contract MockERC721 is ERC721 {
+contract MockERC721Enumerable is ERC721Enumerable {
     string contractName;
 
-    constructor(string memory _contractName) ERC721("Mock", "Mock ERC721") {
+    constructor(string memory _contractName)
+        ERC721("Eat The Blocks NFTs", "ETBNFT")
+    {
         contractName = _contractName;
     }
 
-    ///
-    ///  @dev See {IERC721Metadata-tokenURI}.
-    ///
+    //
+    //  @dev See {IERC721Metadata-tokenURI}.
+    //
     function tokenURI(uint256 tokenId)
         public
         view
@@ -100,47 +98,3 @@ contract MockERC721 is ERC721 {
         _safeMint(to, tokenId, data);
     }
 } */
-/*
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-
-contract MockERC721 is ERC721 {
-    string internal contractName;
-
-    constructor(string memory _contractName) ERC721("Mock", "Mock ERC721") {
-        contractName = _contractName;
-    }
-
-    ///
-    ///  @dev See {IERC721Metadata-tokenURI}.
-    ///
-    function tokenURI(uint256 tokenId)
-        public
-        view
-        virtual
-        override
-        returns (string memory)
-    {
-        return contractName;
-    }
-
-    function mint(address to, uint256 tokenId) public virtual {
-        _mint(to, tokenId);
-    }
-
-    function burn(uint256 tokenId) public virtual {
-        _burn(tokenId);
-    }
-
-    function safeMint(address to, uint256 tokenId) public virtual {
-        _safeMint(to, tokenId, "");
-    }
-
-    function safeMint(
-        address to,
-        uint256 tokenId,
-        bytes memory data
-    ) public virtual {
-        _safeMint(to, tokenId, data);
-    }
-}
- */

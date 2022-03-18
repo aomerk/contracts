@@ -64,25 +64,25 @@ abstract contract ERC20 {
 		EVENTS
 
 	 */
+
     /// @dev A token contract which creates new tokens SHOULD trigger a Transfer
     /// event with the _from address set to 0x0 when tokens are created.
     /// @notice MUST trigger when tokens are transferred, including zero value transfers.
-    /// @param _from address The address the tokens are transferred from.
-    /// @param _to address The address the tokens are transferred to.
-    /// @param _value uint256 the amount of tokens transferred.
-    event Transfer(address indexed _from, address indexed _to, uint256 _value);
-
+    /// _from address The address the tokens are transferred from.
+    /// _to address The address the tokens are transferred to.
+    /// _value uint256 the amount of tokens transferred.
+    // event Transfer(address indexed _from, address indexed _to, uint256 _value);
+    uint256 internal constant TRANSFER_EVENT_HASH =
+        0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef;
     /// @dev A token contract which creates new tokens SHOULD trigger a Transfer
     ///  event with the _from address set to 0x0 when tokens are created.
     /// @notice MUST trigger on any successful call to approve(address _spender, uint256 _value).
-    /// @param _owner address The address the approval is for.
-    /// @param _spender address The address that is able to spend the funds.
-    /// @param _value uint256 The amount of tokens that are approved for the spender.
-    event Approval(
-        address indexed _owner,
-        address indexed _spender,
-        uint256 _value
-    );
+    /// _owner address The address the approval is for.
+    /// _spender address The address that is able to spend the funds.
+    /// _value uint256 The amount of tokens that are approved for the spender.
+    // event Approval(address indexed _owner,address indexed _spender,uint256 _value);
+    uint256 internal constant APPROVAL_EVENT_HASH =
+        0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925;
 
     /*
 
@@ -103,34 +103,61 @@ abstract contract ERC20 {
         returns (bool success)
     {
         assembly {
+            /************************************
+             *									*
+             *		load caller's balance 		*
+             *									*
+             ************************************/
             // remove balance from _from.
             // it is possible for this operation to underflow
-            mstore(0, caller())
-            mstore(32, balanceOf.slot)
+            mstore(0x0, caller())
+            mstore(0x20, balanceOf.slot)
 
-            let fromOffset := keccak256(0, 64)
+            let fromOffset := keccak256(0x00, 0x40)
             let fromValue := sload(fromOffset)
 
-            // underflow possible
+            /************************************
+             *									*
+             *		check caller's balance	*
+             *									*
+             ************************************/
+            //	Throws if the message caller’s account balance
+            //	does not have enough tokens to spend.
             if gt(_value, fromValue) {
                 revert(0, 0)
             }
 
+            /************************************
+             *									*
+             *		set caller's balance 		*
+             *									*
+             ************************************/
+
             // decrease balance of _from
             sstore(fromOffset, sub(fromValue, _value))
 
+            /************************************
+             *									*
+             *		set recipient's balance		*
+             *									*
+             ************************************/
             // add balance to target
             // balanceOf++ can't overflow, because totalSupply can't overflow.
             // there is not enough value to overflow.
-            mstore(0, _to)
-            mstore(32, balanceOf.slot)
-            let toOffset := keccak256(0, 64)
-
-            // balance value is sload(toOffset)
+            mstore(0x00, _to)
+            mstore(0x20, balanceOf.slot)
+            let toOffset := keccak256(0x00, 0x40)
+            // update balance of _to
             sstore(toOffset, add(sload(toOffset), _value))
-        }
 
-        emit Transfer(msg.sender, _to, _value);
+            /************************************
+             *									*
+             *		emit transfer event			*
+             *									*
+             ************************************/
+            mstore(0x20, _value)
+            log3(0, 0x20, TRANSFER_EVENT_HASH, caller(), _to)
+        }
 
         return true;
     }
@@ -153,72 +180,80 @@ abstract contract ERC20 {
     ) public returns (bool success) {
         // check if the sender has enough tokens to spend
         assembly {
-            /*
-
-				check allowance
-
-			 */
+            /************************************
+             *									*
+             *		load caller's allowance		*
+             *									*
+             ************************************/
             // load the value of the allowance
             mstore(0x0, _from)
             mstore(0x20, allowance.slot)
-            let firstOffSet := keccak256(0x0, 0x40)
+            mstore(0x20, keccak256(0x0, 0x40))
             mstore(0x0, caller())
-            mstore(0x20, firstOffSet)
-
             let fromAllowanceOffset := keccak256(0x0, 0x40)
-            let fromAllowance := sload(fromAllowanceOffset)
+            let allowanceOfFrom := sload(fromAllowanceOffset)
 
-            // check if the sender has enough tokens to spend
-            // if (fromAllowance >= value || from == msg.sender)
-            // TODO - correct binary operator usage with xor/xnor
-            if and(lt(fromAllowance, _value), not(eq(_from, caller()))) {
+            /************************************
+             *									*
+             *		check caller's allowance	*
+             *									*
+             ************************************/
+            // authorize sender
+            // either sender is from or is allowed to spend enough
+            // fromAllowance < value, "bad"
+            if lt(allowanceOfFrom, _value) {
                 revert(0, 0)
             }
 
-            // reduce allowance of spender
-            sstore(fromAllowanceOffset, sub(fromAllowance, _value))
-            /*
+            /************************************
+             *									*
+             *		reduce allowance			*
+             *									*
+             ************************************/
+            sstore(fromAllowanceOffset, sub(allowanceOfFrom, _value))
 
-
-
-			 */
-
-            /*
-
-
-			start transfer
-
-
-			 */
-
-            // remove balance from _from.
+            /************************************
+             *									*
+             *		set _from balance			*
+             *									*
+             ************************************/
             // it is possible for this operation to underflow
-            mstore(0, _from)
-            mstore(32, balanceOf.slot)
+            mstore(0x00, _from)
+            mstore(0x20, balanceOf.slot)
+            let fromOffset := keccak256(0x00, 0x40)
+            let balanceOfFrom := sload(fromOffset)
 
-            let fromOffset := keccak256(0, 64)
-            let fromValue := sload(fromOffset)
-
-            // underflow possible
-            if gt(_value, fromValue) {
+            // check for underflow
+            if gt(_value, balanceOfFrom) {
                 revert(0, 0)
             }
 
             // decrease balance of _from
-            sstore(fromOffset, sub(fromValue, _value))
+            sstore(fromOffset, sub(balanceOfFrom, _value))
 
+            /************************************
+             *									*
+             *		set _to balance				*
+             *									*
+             ************************************/
             // add balance to target
-            // balanceOf++ can't overflow, because totalSupply can't overflow.
-            // there is not enough value to overflow.
-            mstore(0, _to)
-            mstore(32, balanceOf.slot)
-            let toOffset := keccak256(0, 64)
+            mstore(0x00, _to)
+            mstore(0x20, balanceOf.slot)
+            let offsetBalanceTo := keccak256(0x00, 0x40)
 
             // balance value is sload(toOffset)
-            sstore(toOffset, add(sload(toOffset), _value))
-        }
+            // balanceOf++ can't overflow, because totalSupply can't overflow.
+            // there is not enough value to overflow.
+            sstore(offsetBalanceTo, add(sload(offsetBalanceTo), _value))
 
-        emit Transfer(_from, _to, _value);
+            /************************************
+             *									*
+             *		emit transfer event			*
+             *									*
+             ************************************/
+            mstore(0x20, _value)
+            log3(0, 0x20, TRANSFER_EVENT_HASH, _from, _to)
+        }
 
         return true;
     }
@@ -232,18 +267,27 @@ abstract contract ERC20 {
         returns (bool success)
     {
         assembly {
+            /************************************
+             *									*
+             *		set allowance value			*
+             *									*
+             ************************************/
             // load the value of the allowance
-            mstore(0, caller())
-            mstore(32, allowance.slot)
-            let callerOffset := keccak256(0, 64)
+            mstore(0x00, caller())
+            mstore(0x20, allowance.slot)
+            mstore(0x20, keccak256(0x00, 0x40))
+            mstore(0x00, _spender)
+            // set value of allowance
+            sstore(keccak256(0x00, 0x40), _value)
 
-            mstore(0, _spender)
-            mstore(32, callerOffset)
-
-            sstore(keccak256(0, 64), _value)
+            /************************************
+             *									*
+             *		emit approval event			*
+             *									*
+             ************************************/
+            mstore(0x20, _value)
+            log3(0, 0x20, APPROVAL_EVENT_HASH, caller(), _spender)
         }
-
-        emit Approval(msg.sender, _spender, _value);
 
         return true;
     }
@@ -257,45 +301,61 @@ abstract contract ERC20 {
 	 */
 
     function _mint(address to, uint256 amount) internal virtual {
-        // increse the balance of the receiver
         assembly {
-            // Store num in memory scratch space (note: lookup "free memory pointer" if you need to allocate space)
-            mstore(0, to)
+            /************************************
+             *									*
+             *		increase total supply		*
+             *									*
+             ************************************/
+            let currentSupply := sload(totalSupply.slot)
+            let newSupply := add(currentSupply, amount)
+
+            // overflow check
+            if lt(newSupply, currentSupply) {
+                revert(0, 0)
+            }
+
+            sstore(totalSupply.slot, newSupply)
+
+            /************************************
+             *									*
+             *		increase _to balance		*
+             *									*
+             ************************************/
+            mstore(0x00, to)
 
             // Store slot number in scratch space after num
-            mstore(32, balanceOf.slot)
+            mstore(0x20, balanceOf.slot)
 
             // Create hash from previously stored num and slot
-            let toAddressOffset := keccak256(0, 64)
+            let toAddressOffset := keccak256(0x00, 0x40)
 
             // increase balance of minted address
             sstore(toAddressOffset, add(sload(toAddressOffset), amount))
 
-            // increase total supply
-            let currentSupply := sload(totalSupply.slot)
-            sstore(totalSupply.slot, add(currentSupply, amount))
-
-            // overflow check
-            if lt(sload(totalSupply.slot), currentSupply) {
-                revert(0, 0)
-            }
+            /************************************
+             *									*
+             *		emit transfer event			*
+             *									*
+             ************************************/
+            mstore(0x20, amount)
+            log3(0, 0x20, TRANSFER_EVENT_HASH, 0x00, to)
         }
-
-        emit Transfer(address(0), to, amount);
     }
 
     function _burn(address from, uint256 amount) internal virtual {
         // reduce balance of from and total supply
         assembly {
-            // Store num in memory scratch space (note: lookup "free memory pointer" if you need to allocate space)
-            mstore(0, from)
-
+            /************************************
+             *									*
+             *		decrease from's balance		*
+             *									*
+             ************************************/
+            mstore(0x00, from)
             // Store slot number in scratch space after num
-            mstore(32, balanceOf.slot)
-
+            mstore(0x20, balanceOf.slot)
             // Create hash from previously stored num and slot
-            let fromAddressOffset := keccak256(0, 64)
-
+            let fromAddressOffset := keccak256(0x00, 0x40)
             // Load mapping value using the just calculated hash
             let balanceOfAddress := sload(fromAddressOffset)
 
@@ -308,11 +368,22 @@ abstract contract ERC20 {
             // amount is less then balanceOf[from], so it can't overflow
             sstore(fromAddressOffset, sub(balanceOfAddress, amount))
 
+            /************************************
+             *									*
+             *		decrease total supply		*
+             *									*
+             ************************************/
             // total supply is at least balanceOf[from], so it can't overflow
             sstore(totalSupply.slot, sub(sload(totalSupply.slot), amount))
-        }
 
-        emit Transfer(from, address(0), amount);
+            /************************************
+             *									*
+             *		emit transfer event			*
+             *									*
+             ************************************/
+            mstore(0x20, amount)
+            log3(0, 0x20, TRANSFER_EVENT_HASH, from, 0x00)
+        }
     }
 
     function computeDomainSeparator() internal view virtual returns (bytes32) {
