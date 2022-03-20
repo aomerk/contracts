@@ -2,7 +2,7 @@
 pragma solidity ^0.8.3;
 
 function concat(uint8[] memory a, uint8[] memory b)
-    view
+    pure
     returns (uint8[] memory)
 {
     uint256 length = a.length + b.length;
@@ -22,7 +22,7 @@ function splice(
     uint8[] memory seq,
     uint256 start,
     uint256 end
-) view returns (uint8[] memory) {
+) pure returns (uint8[] memory) {
     uint256 length = end - start;
     uint8[] memory result = new uint8[](length);
     for (uint256 i = 0; i < length; i++) {
@@ -33,7 +33,7 @@ function splice(
 }
 
 function multiplyStr(uint8[] memory seq, uint256 multiplier)
-    view
+    pure
     returns (uint8[] memory)
 {
     uint256 length = seq.length * multiplier;
@@ -46,7 +46,7 @@ function multiplyStr(uint8[] memory seq, uint256 multiplier)
     return result;
 }
 
-function itoa(uint8[] memory seq) view returns (bytes memory) {
+function itoa(uint8[] memory seq) pure returns (bytes memory) {
     uint256 length = seq.length;
     bytes memory result = new bytes(length);
     for (uint256 i = 0; i < length; i++) {
@@ -56,7 +56,7 @@ function itoa(uint8[] memory seq) view returns (bytes memory) {
     return result;
 }
 
-function splitPipes(uint8[] memory seq) view returns (uint8[][] memory) {
+function splitPipes(uint8[] memory seq) pure returns (uint8[][] memory) {
     // 0x7c = '|'
     return split(splice(seq, 1, seq.length - 1), 0x7c);
 }
@@ -65,7 +65,7 @@ function splitPipes(uint8[] memory seq) view returns (uint8[][] memory) {
 //  expression following it. For example, the below regex matches the date format
 //  of MM/DD/YYYY, MM.DD.YYYY and MM-DD-YYY. It also matches MM.DD-YYYY, etc.
 function split(uint8[] memory seq, uint8 token)
-    view
+    pure
     returns (uint8[][] memory)
 {
     /*
@@ -128,7 +128,7 @@ function split(uint8[] memory seq, uint8 token)
     return result;
 }
 
-function find(uint8[] memory seq, uint8 token) view returns (uint256) {
+function find(uint8[] memory seq, uint8 token) pure returns (uint256) {
     uint256 i;
     for (i = 0; i < seq.length; i++) {
         if (seq[i] == token) {
