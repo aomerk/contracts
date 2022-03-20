@@ -86,6 +86,7 @@ function isAlpha(uint8 c) pure returns (bool) {
 }
 
 function isLiteral(uint8 c) pure returns (bool) {
+    // 0x3a is ':' 0x20 is ' ' 0x2f is '/'
     return isAlpha(c) || isDigit(c) || c == 0x3a || c == 0x20 || c == 0x2f;
 }
 
