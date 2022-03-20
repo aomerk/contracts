@@ -1,10 +1,281 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.0;
 
+import "./Lex.sol";
+import "./String.sol";
+
+function scanExpression(uint8[] memory expression)
+    view
+    returns (
+        uint8[] memory,
+        uint8[] memory,
+        uint8
+    )
+{
+    uint8[] memory head;
+    uint8[] memory tail;
+    uint256 expressionEnd;
+    uint8 operator;
+
+    // find alternation
+    if (isLeftParanthesis(expression[0])) {
+        expressionEnd = find(expression, 0x29);
+        if (expressionEnd == expression.length) {
+            revert("unmatched left parenthesis");
+        }
+        expressionEnd++;
+        head = splice(expression, 0, expressionEnd);
+    } else if (isLeftBracket(expression[0])) {
+        // find set
+        expressionEnd = find(expression, 0x5d);
+        if (expressionEnd == expression.length) {
+            revert("unmatched left bracket");
+        }
+
+        expressionEnd++;
+        head = splice(expression, 0, expressionEnd);
+    } else if (isEscape(expression[0])) {
+        expressionEnd = 2;
+        head = splice(expression, 0, expressionEnd);
+    } else {
+        expressionEnd = 1;
+        head = splice(expression, 0, expressionEnd);
+    }
+
+    // set head
+
+    if (
+        expressionEnd < expression.length &&
+        isOperator(expression[expressionEnd])
+    ) {
+        operator = expression[expressionEnd];
+        expressionEnd++;
+    }
+
+    tail = splice(expression, expressionEnd, expression.length);
+
+    return (head, tail, operator);
+}
+
+function matchAsterisk(
+    uint8[] memory expression,
+    uint8[] memory seq,
+    uint256 matchSize
+) view returns (bool, uint256) {
+    return matchMultiple(expression, seq, matchSize, 0, 0);
+}
+
+function matchPlus(
+    uint8[] memory expression,
+    uint8[] memory seq,
+    uint256 matchSize
+) view returns (bool, uint256) {
+    return matchMultiple(expression, seq, matchSize, 1, 0);
+}
+
+function matchQuestionMark(
+    uint8[] memory expression,
+    uint8[] memory seq,
+    uint256 matchSize
+) view returns (bool, uint256) {
+    return matchMultiple(expression, seq, matchSize, 0, 1);
+}
+
+function matchAlternation(
+    uint8[] memory expression,
+    uint8[] memory seq,
+    uint256 matchSize
+) view returns (bool, uint256) {
+    uint8[] memory head;
+    uint8[] memory tail;
+    uint8 operator;
+
+    (head, tail, operator) = scanExpression(expression);
+
+    uint8[][] memory alternatives = splitPipes(head);
+
+    // for at least one alternative, alt + tail must match
+    for (uint256 i = 0; i < alternatives.length; i++) {
+        bool isMatched;
+        uint256 matchingSize;
+
+        (isMatched, matchingSize) = matchExpression(
+            concat(alternatives[i], tail),
+            seq,
+            matchSize
+        );
+
+        if (isMatched) return (true, matchingSize);
+    }
+
+    return (false, 0);
+}
+
+function matchExpression(
+    uint8[] memory expression,
+    uint8[] memory seq,
+    uint256 matchSize
+) view returns (bool, uint256) {
+    if (expression.length == 0) return (true, matchSize);
+    else if (isDollar(expression[0])) return (seq.length == 0, matchSize);
+
+    uint8[] memory head;
+    uint8[] memory tail;
+    uint8 operator;
+
+    (head, tail, operator) = scanExpression(expression);
+    if (isAsterisk(operator)) return matchAsterisk(expression, seq, matchSize);
+    else if (isPlus(operator)) {
+        return matchPlus(expression, seq, matchSize);
+    } else if (isQuestionMark(operator))
+        return matchQuestionMark(expression, seq, matchSize);
+    else if (isAlternation(head))
+        return matchAlternation(expression, seq, matchSize);
+    else if (isUnit(head)) {
+        if (matchUnit(expression, seq)) {
+            return
+                matchExpression(
+                    tail,
+                    splice(seq, 1, seq.length),
+                    matchSize + 1
+                );
+        }
+    } else {
+        revert("unrecognized expression");
+    }
+
+    return (false, 0);
+}
+
+function scanMultiple(
+    uint8[] memory head,
+    uint8[] memory seq,
+    uint256 matchSize,
+    uint256 maxMatchSize
+) view returns (uint256) {
+    uint256 submatchLength;
+    uint256 cursor = 0;
+
+    while (submatchLength < maxMatchSize || maxMatchSize == 0) {
+        bool subMatched;
+        uint256 subExpressionSize;
+        (subMatched, subExpressionSize) = matchExpression(
+            multiplyStr(head, (submatchLength)),
+            seq,
+            matchSize
+        );
+        cursor += subExpressionSize;
+
+        if (subMatched) submatchLength++;
+        else break;
+    }
+
+    return submatchLength;
+}
+
+function matchMultiple(
+    uint8[] memory expression,
+    uint8[] memory seq,
+    uint256 matchSize,
+    uint256 minMatchSize,
+    uint256 maxMatchSize
+) view returns (bool, uint256) {
+    uint8[] memory head;
+    uint8[] memory tail;
+    uint8 operator;
+
+    (head, tail, operator) = scanExpression(expression);
+
+    uint256 submatchLength = scanMultiple(head, seq, matchSize, maxMatchSize);
+
+    while (submatchLength >= minMatchSize) {
+        bool subMatched;
+        uint256 subExpressionSize;
+        (subMatched, subExpressionSize) = matchExpression(
+            concat(multiplyStr(head, (submatchLength)), tail),
+            seq,
+            matchSize
+        );
+
+        if (subMatched) return (true, subExpressionSize);
+
+        submatchLength--;
+    }
+
+    return (false, 0);
+}
+
+function matchUnit(uint8[] memory expression, uint8[] memory seq)
+    view
+    returns (bool)
+{
+    uint8[] memory head;
+    uint8[] memory tail;
+    uint8 operator;
+
+    (head, tail, operator) = scanExpression(expression);
+
+    if (seq.length == 0) return false;
+
+    if (isPeriod(head[0])) return true;
+    else if (isLiteral(head[0])) return expression[0] == seq[0];
+    else if (isEscapeSequence(head)) {
+        // \w matches alphanumeric characters
+        if (head.length >= 2 && head[0] == 0x5c && head[1] == 0x77) {
+            return isAlpha(seq[0]);
+        } else if (head.length >= 2 && head[0] == 0x5c && head[1] == 0x64) {
+            // \d matches digits
+            return isDigit(seq[0]);
+        } else return false;
+    } else if (isLeftBracket(head[0])) {
+        for (uint256 i = 1; i < head.length - 1; i++) {
+            if (head[i] == seq[0]) return true;
+        }
+
+        return false;
+    }
+
+    return false;
+}
+
+function matchRegExp(uint8[] memory expression, uint8[] memory seq)
+    view
+    returns (
+        bool,
+        uint256,
+        uint256
+    )
+{
+    bool isMatched;
+    uint256 position;
+    uint256 matchLength;
+    uint256 maxPosition;
+
+    if (isStart(expression[0])) {
+        expression = splice(expression, 1, expression.length);
+    } else {
+        maxPosition = seq.length - 1;
+    }
+
+    while (position <= maxPosition && !isMatched) {
+        (isMatched, matchLength) = matchExpression(
+            expression,
+            splice(seq, position, seq.length),
+            0
+        );
+
+        if (isMatched) return (true, position, matchLength);
+
+        position++;
+    }
+
+    return (false, 0, 0);
+}
+
 contract RegExp {
     function matchSingle(uint8 pattern, uint8 expression)
         private
-        pure
+        view
         returns (bool)
     {
         // empty pattern matches everything
@@ -23,7 +294,7 @@ contract RegExp {
 
     function MatchRegExp(string memory pattern, string memory expression)
         public
-        pure
+        view
         returns (bool)
     {
         return matches(bytes(pattern), bytes(expression));
@@ -31,49 +302,23 @@ contract RegExp {
 
     function matches(bytes memory pattern, bytes memory expression)
         public
-        pure
+        view
         returns (bool)
     {
-        uint256 i = 0;
-        uint256 j = 0;
-
-        while (i < pattern.length && j < expression.length) {
-            uint8 patternToken = uint8(pattern[i]);
-            uint8 expressionToken = uint8(expression[j]);
-
-            // 0x2A = '*'
-            if (patternToken == 0x2A) {
-                // * matches zero or more of the previous token
-                while (j < expression.length) {
-                    if (
-                        matchSingle(uint8(pattern[i - 1]), uint8(expression[j]))
-                    ) {
-                        j++;
-                    } else {
-                        break;
-                    }
-                }
-
-                i++;
-                continue;
-            }
-
-            // 0x2E = '.'
-            if (patternToken == 0x2E) {
-                // . matches any character
-                j++;
-                i++;
-                continue;
-            }
-
-            if (matchSingle(patternToken, expressionToken)) {
-                i++;
-                j++;
-            } else {
-                return false;
-            }
+        bool isMatched;
+        uint256 position;
+        uint256 matchLength;
+        uint8[] memory p = new uint8[](pattern.length);
+        uint8[] memory e = new uint8[](expression.length);
+        for (uint256 i = 0; i < pattern.length; i++) {
+            p[i] = uint8(pattern[i]);
+        }
+        for (uint256 i = 0; i < expression.length; i++) {
+            e[i] = uint8(expression[i]);
         }
 
-        return true;
+        (isMatched, position, matchLength) = matchRegExp(p, e);
+
+        return isMatched;
     }
 }
