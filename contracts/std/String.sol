@@ -56,6 +56,21 @@ function itoa(uint8[] memory seq) pure returns (bytes memory) {
     return result;
 }
 
+function toString(uint8[] memory seq) pure returns (string memory) {
+    return string(itoa(seq));
+}
+
+function toCharArray(bytes memory s) pure returns (uint8[] memory) {
+    uint256 length = s.length;
+
+    uint8[] memory result = new uint8[](length);
+    for (uint256 i = 0; i < length; i++) {
+        result[i] = uint8(s[i]);
+    }
+
+    return result;
+}
+
 function splitPipes(uint8[] memory seq) pure returns (uint8[][] memory) {
     // 0x7c = '|'
     return split(splice(seq, 1, seq.length - 1), 0x7c);
