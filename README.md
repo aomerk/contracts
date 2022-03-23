@@ -4,8 +4,20 @@ library for modern, well-tested and gas optimized smart contract development. Al
 
 This software is not audited and provided **as is** and **as provided**. Any PRs and audits are welcomed.
 
-
-
+# Implementations
+- Tokens
+  - [ERC721](./contracts/token/ERC721/)
+  - [ERC721Enumerable](./contracts/token/ERC721/)
+  - [ERC20](./contracts/token/ERC20/)
+  - [ERC1155](./contracts/token/ERC1155/)
+- [Multi-Sig wallet](./contracts/multisig/)
+- [RegExp Engine](./contracts/std/regexp)
+- [String Utilities](./contracts/std/String.sol)
+- Data Structures / Algorithms
+  - [Binary Search](./contracts/data-structures/SortedArray.sol)
+  - [Sorted Array](./contracts/data-structures/SortedArray.sol)
+  - [Linked List](./contracts/data-structures/LinkedList/)
+  - [QuickSort](./contracts/data-structures/QuickSort.sol)
 # Benchmarks
 
 ## ERC721
