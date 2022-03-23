@@ -97,4 +97,25 @@ contract MultiSig {
         return transactions.length - 1;
     }
 
+    /// @dev sender confirms or denies a transaction. Emits Confirm event.
+    /// @param _transactionId the id of the transaction to confirm or deny, Reverts
+    /// if the transaction is not found.
+    /// @param _confirmed true if the transaction should be confirmed, false if it should be denied.
+    function confirmTransaction(uint256 _transactionId, bool _confirmed)
+        public
+        onlySigners
+    {
+        require(_transactionId < transactions.length, "no such transaction");
+
+        isConfirmed[msg.sender][_transactionId] = _confirmed;
+
+        emit Confirm(
+            msg.sender,
+            transactions[_transactionId]._to,
+            _transactionId,
+            transactions[_transactionId]._value,
+            transactions[_transactionId].data
+        );
+    }
+
 }
