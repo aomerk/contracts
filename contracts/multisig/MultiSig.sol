@@ -118,4 +118,27 @@ contract MultiSig {
         );
     }
 
+    /// @dev executes a transaction if it is confirmed by the quorum.
+    /// @param _transactionId the id of the transaction to execute, Reverts if
+    /// the transaction is not found.
+    function executeTransaction(uint256 _transactionId) public onlySigners {
+        require(_transactionId < transactions.length, "no such transaction");
+
+        // fetch transaction
+        Transaction storage transaction = transactions[_transactionId];
+
+        // check if transaction is executed alreqady
+        require(transaction._executed == false, "transaction already executed");
+
+        (bool ok, bytes memory data) = transaction._to.call{
+            value: transaction._value
+        }(transaction.data);
+
+        require(ok, "transaction failed");
+
+        // mark transaction as executed
+        transaction._executed = true;
+
+        emit Execution(_transactionId, data);
+    }
 }
