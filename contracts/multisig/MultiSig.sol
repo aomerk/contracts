@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity ^0.8.0;
 
+/// @dev implements a multi-signature contract
+///  defined in https://en.bitcoin.it/wiki/Multi-signature
 contract MultiSig {
     /************************************
      *									*
@@ -109,12 +111,14 @@ contract MultiSig {
 
         isConfirmed[msg.sender][_transactionId] = _confirmed;
 
+        Transaction memory transaction = transactions[_transactionId];
+
         emit Confirm(
             msg.sender,
-            transactions[_transactionId]._to,
+            transaction._to,
             _transactionId,
-            transactions[_transactionId]._value,
-            transactions[_transactionId].data
+            transaction._value,
+            transaction.data
         );
     }
 
