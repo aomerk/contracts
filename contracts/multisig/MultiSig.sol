@@ -66,4 +66,35 @@ contract MultiSig {
         signers = _signers;
         quorum = _quorum;
     }
+
+    /// @dev reverts if sender is not an owner
+    modifier onlySigners() {
+        for (uint256 i = 0; i < signers.length; i++) {
+            if (msg.sender != signers[i]) {
+                continue;
+            }
+
+            _;
+            return;
+        }
+
+        revert("not a signer");
+    }
+
+    /// @dev submits a transaction to the multisig wallet.
+    /// @param _to the address to send the transaction to
+    /// @param _amount the amount of ether to send
+    /// @return _newId the transaction id just submitted
+    function submitTransaction(
+        address _to,
+        uint256 _amount,
+        bytes memory data
+    ) public onlySigners returns (uint256 _newId) {
+        transactions.push(Transaction(_to, _amount, false, data));
+
+        emit Submit(msg.sender, _to, transactions.length - 1, _amount, data);
+
+        return transactions.length - 1;
+    }
+
 }
