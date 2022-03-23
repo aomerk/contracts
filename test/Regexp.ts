@@ -15,7 +15,7 @@ describe("RegExp", function () {
 	it("deploy", async function () {
 		contracts()
 	});
-	describe.only("match", function () {
+	describe("match", function () {
 		it("can match n", async function () {
 			const regExp = await contracts();
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 import "./Lex.sol";
 
-import "./String.sol";
+import "../String.sol";
 
 function scanExpression(uint8[] memory expression)
     pure
