@@ -38,4 +38,32 @@ contract MultiSig {
         bytes data;
     }
 
+    /************************************
+     *									*
+     *			state variables			*
+     *									*
+     ************************************/
+    /// @dev did the signer confirm the transaction.
+    mapping(address => mapping(uint256 => bool)) public isConfirmed;
+
+    /// @dev all transactions. see definition above.
+    Transaction[] private transactions;
+    /// @dev signers are the addresses that can approve transactions
+    address[] public signers;
+
+    /// @dev required is the number of signers that must approve a transaction for it to be valid
+    uint256 public quorum;
+
+    receive() external payable {
+        emit Deposit(msg.sender, msg.value);
+    }
+
+    constructor(address[] memory _signers, uint256 _quorum) {
+        require(_signers.length > 0, "no signers provided");
+        require(_quorum > 0, "quorum too low");
+        require(_quorum <= _signers.length, "quorum too high");
+
+        signers = _signers;
+        quorum = _quorum;
+    }
 }
